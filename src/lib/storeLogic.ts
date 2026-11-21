@@ -137,12 +137,13 @@ export function computeStoreAnalytics(
   orders: Pick<Order, 'finalTotal' | 'status'>[],
   totalStoreVisits: number
 ): StoreAnalytics {
-  const totalOrders = orders.length;
+  const approvedOrders = orders.filter(
+    (o) => o.status !== 'قيد المراجعة' && o.status !== 'مرفوض'
+  );
+  const totalOrders = approvedOrders.length;
   const pendingOrders = orders.filter((o) => o.status === 'قيد المراجعة').length;
   const totalSalesRevenue = roundOmr(
-    orders
-      .filter((o) => o.status !== 'مرفوض')
-      .reduce((sum, o) => sum + (Number.isFinite(o.finalTotal) ? o.finalTotal : 0), 0)
+    approvedOrders.reduce((sum, o) => sum + (Number.isFinite(o.finalTotal) ? o.finalTotal : 0), 0)
   );
 
   return {

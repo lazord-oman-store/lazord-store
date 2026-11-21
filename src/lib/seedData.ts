@@ -9,7 +9,7 @@ export interface PersistedStoreState {
 }
 
 export const INITIAL_SEED_STATE: PersistedStoreState = {
-  totalStoreVisits: 128,
+  totalStoreVisits: 0,
   settings: {
     brandName: 'LAZORD | لازورد',
     brandBio:
@@ -94,71 +94,5 @@ export const INITIAL_SEED_STATE: PersistedStoreState = {
       createdAt: '2026-10-15T08:00:00.000Z',
     },
   ],
-  orders: [
-    {
-      id: 'ord-seed-1001',
-      orderNumber: 'LZD-1001',
-      trackingNumber: 'TRK-LZD-84920',
-      customerName: 'سلطان بن سعيد المعمري',
-      customerPhone: '95128430',
-      city: 'محافظة مسقط',
-      address: 'بوشر، حي الصاروج، فيلا 18',
-      items: [
-        {
-          productId: 'prod-oud-sultani',
-          nameAr: 'عود لازورد الملكي',
-          category: 'perfume',
-          sizeLabel: '100 مل · Eau de Parfum',
-          unitPriceOmr: 34.0,
-          quantity: 1,
-          lineTotalOmr: 34.0,
-        },
-        {
-          productId: 'prod-bukhoor-diwan',
-          nameAr: 'بخور الديوان الفاخر',
-          category: 'bukhoor',
-          sizeLabel: '60 جم · علبة محفوظة',
-          unitPriceOmr: 18.0,
-          quantity: 1,
-          lineTotalOmr: 18.0,
-        },
-      ],
-      originalSubtotal: 52.0,
-      promoCodeUsed: 'LAZORD15',
-      discountAmount: 7.8,
-      finalTotal: 44.2,
-      receiptImageUrl: '/api/seed-receipt/LZD-1001',
-      status: 'جاري التجهيز',
-      createdAt: '2026-11-18T11:30:00.000Z',
-      updatedAt: '2026-11-19T09:15:00.000Z',
-    },
-    {
-      id: 'ord-seed-1002',
-      orderNumber: 'LZD-1002',
-      trackingNumber: 'TRK-LZD-61504',
-      customerName: 'مريم بنت علي الرواحية',
-      customerPhone: '97410285',
-      city: 'محافظة ظفار',
-      address: 'صلالة، منطقة السعادة الشمالية، بناية النخيل',
-      items: [
-        {
-          productId: 'prod-amber-velvet',
-          nameAr: 'عنبر مخملي',
-          category: 'perfume',
-          sizeLabel: '100 مل · Extrait de Parfum',
-          unitPriceOmr: 28.5,
-          quantity: 1,
-          lineTotalOmr: 28.5,
-        },
-      ],
-      originalSubtotal: 28.5,
-      promoCodeUsed: null,
-      discountAmount: 0,
-      finalTotal: 28.5,
-      receiptImageUrl: '/api/seed-receipt/LZD-1002',
-      status: 'قيد المراجعة',
-      createdAt: '2026-11-20T14:20:00.000Z',
-      updatedAt: '2026-11-20T14:20:00.000Z',
-    },
-  ],
+  orders: [],
 };

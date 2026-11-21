@@ -57,7 +57,13 @@ export default function App() {
     // Increment live store visits counter once per browser session when browsing storefront
     if (!isAdminLocation() && !sessionStorage.getItem('lazord_visit_recorded')) {
       sessionStorage.setItem('lazord_visit_recorded', '1');
-      storeRepository.recordVisit().catch(() => {});
+      storeRepository.recordVisit().catch(() => {
+        try {
+          sessionStorage.removeItem('lazord_visit_recorded');
+        } catch {
+          // ignore storage errors
+        }
+      });
     }
   }, [loadStorefront]);
 

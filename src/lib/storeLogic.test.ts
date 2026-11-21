@@ -96,19 +96,39 @@ test('calculateCartTotals handles percentage and fixed OMR promo codes accuratel
   assert.equal(inactiveResult.appliedCode, null);
 });
 
-test('computeStoreAnalytics excludes rejected orders from revenue and counts pending orders', () => {
-  const analytics = computeStoreAnalytics(
+test('computeStoreAnalytics starts at zero and counts only approved orders in revenue and order count', () => {
+  const zeroBaseline = computeStoreAnalytics([], 0);
+  assert.deepEqual(zeroBaseline, {
+    totalSalesRevenue: 0,
+    totalOrders: 0,
+    pendingOrders: 0,
+    totalStoreVisits: 0,
+  });
+
+  const pendingOnly = computeStoreAnalytics(
+    [{ finalTotal: 34.0, status: 'قيد المراجعة' }],
+    5
+  );
+  assert.deepEqual(pendingOnly, {
+    totalSalesRevenue: 0,
+    totalOrders: 0,
+    pendingOrders: 1,
+    totalStoreVisits: 5,
+  });
+
+  const mixed = computeStoreAnalytics(
     [
       { finalTotal: 45.5, status: 'تم تأكيد الدفع' },
+      { finalTotal: 18.0, status: 'جاري التجهيز' },
       { finalTotal: 22.0, status: 'قيد المراجعة' },
       { finalTotal: 99.0, status: 'مرفوض' },
     ],
-    142
+    14
   );
-  assert.equal(analytics.totalOrders, 3);
-  assert.equal(analytics.pendingOrders, 1);
-  assert.equal(analytics.totalSalesRevenue, 67.5);
-  assert.equal(analytics.totalStoreVisits, 142);
+  assert.equal(mixed.totalOrders, 2);
+  assert.equal(mixed.pendingOrders, 1);
+  assert.equal(mixed.totalSalesRevenue, 63.5);
+  assert.equal(mixed.totalStoreVisits, 14);
 });
 
 test('formatOmr formats 3 decimal places with ر.ع', () => {

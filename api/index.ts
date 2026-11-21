@@ -88,6 +88,7 @@ interface PersistedStoreState {
   settings: StoreSettings;
   totalStoreVisits: number;
   adminCredential?: AdminCredentialRecord | null;
+  seedResetV2?: boolean;
 }
 
 // --- Constants & Initial Seed State ---
@@ -122,8 +123,12 @@ const OMAN_GOVERNORATES = [
   'محافظة الوسطى',
 ] as const;
 
+const LEGACY_SEED_ORDER_IDS = new Set(['ord-seed-1001', 'ord-seed-1002']);
+const LEGACY_SEED_VISITS = 128;
+
 const INITIAL_SEED_STATE: PersistedStoreState = {
-  totalStoreVisits: 128,
+  totalStoreVisits: 0,
+  seedResetV2: true,
   settings: {
     brandName: 'LAZORD | لازورد',
     brandBio:
@@ -208,73 +213,7 @@ const INITIAL_SEED_STATE: PersistedStoreState = {
       createdAt: '2026-10-15T08:00:00.000Z',
     },
   ],
-  orders: [
-    {
-      id: 'ord-seed-1001',
-      orderNumber: 'LZD-1001',
-      trackingNumber: 'TRK-LZD-84920',
-      customerName: 'سلطان بن سعيد المعمري',
-      customerPhone: '95128430',
-      city: 'محافظة مسقط',
-      address: 'بوشر، حي الصاروج، فيلا 18',
-      items: [
-        {
-          productId: 'prod-oud-sultani',
-          nameAr: 'عود لازورد الملكي',
-          category: 'perfume',
-          sizeLabel: '100 مل · Eau de Parfum',
-          unitPriceOmr: 34.0,
-          quantity: 1,
-          lineTotalOmr: 34.0,
-        },
-        {
-          productId: 'prod-bukhoor-diwan',
-          nameAr: 'بخور الديوان الفاخر',
-          category: 'bukhoor',
-          sizeLabel: '60 جم · علبة محفوظة',
-          unitPriceOmr: 18.0,
-          quantity: 1,
-          lineTotalOmr: 18.0,
-        },
-      ],
-      originalSubtotal: 52.0,
-      promoCodeUsed: 'LAZORD15',
-      discountAmount: 7.8,
-      finalTotal: 44.2,
-      receiptImageUrl: '/api/seed-receipt/LZD-1001',
-      status: 'جاري التجهيز',
-      createdAt: '2026-11-18T11:30:00.000Z',
-      updatedAt: '2026-11-19T09:15:00.000Z',
-    },
-    {
-      id: 'ord-seed-1002',
-      orderNumber: 'LZD-1002',
-      trackingNumber: 'TRK-LZD-61504',
-      customerName: 'مريم بنت علي الرواحية',
-      customerPhone: '97410285',
-      city: 'محافظة ظفار',
-      address: 'صلالة، منطقة السعادة الشمالية، بناية النخيل',
-      items: [
-        {
-          productId: 'prod-amber-velvet',
-          nameAr: 'عنبر مخملي',
-          category: 'perfume',
-          sizeLabel: '100 مل · Extrait de Parfum',
-          unitPriceOmr: 28.5,
-          quantity: 1,
-          lineTotalOmr: 28.5,
-        },
-      ],
-      originalSubtotal: 28.5,
-      promoCodeUsed: null,
-      discountAmount: 0,
-      finalTotal: 28.5,
-      receiptImageUrl: '/api/seed-receipt/LZD-1002',
-      status: 'قيد المراجعة',
-      createdAt: '2026-11-20T14:20:00.000Z',
-      updatedAt: '2026-11-20T14:20:00.000Z',
-    },
-  ],
+  orders: [],
 };
 
 // --- Warm In-Memory Fallback & Safe Persistence ---
@@ -379,7 +318,7 @@ function normalizeStoreState(raw: unknown): PersistedStoreState {
     settings: loadedSettings,
     totalStoreVisits:
       typeof parsed.totalStoreVisits === 'number'
-        ? parsed.totalStoreVisits
+        ? Math.max(0, Math.floor(parsed.totalStoreVisits))
         : seed.totalStoreVisits,
     adminCredential:
       parsed.adminCredential &&
@@ -388,6 +327,33 @@ function normalizeStoreState(raw: unknown): PersistedStoreState {
       typeof parsed.adminCredential.hash === 'string'
         ? parsed.adminCredential
         : null,
+    seedResetV2: parsed.seedResetV2 === true,
+  };
+}
+
+function migrateLegacySeedState(raw: unknown): {
+  state: PersistedStoreState;
+  migrated: boolean;
+} {
+  const normalized = normalizeStoreState(raw);
+  if (normalized.seedResetV2) {
+    return { state: normalized, migrated: false };
+  }
+
+  const realOrders = normalized.orders.filter((order) => !LEGACY_SEED_ORDER_IDS.has(order.id));
+  const nextVisits =
+    realOrders.length === 0
+      ? 0
+      : Math.max(0, normalized.totalStoreVisits - LEGACY_SEED_VISITS);
+
+  return {
+    state: {
+      ...normalized,
+      orders: realOrders,
+      totalStoreVisits: nextVisits,
+      seedResetV2: true,
+    },
+    migrated: true,
   };
 }
 
@@ -397,9 +363,12 @@ export async function readStoreState(): Promise<PersistedStoreState> {
     try {
       const rawJson = await kvCommand<string>(kv, ['GET', STORE_KV_KEY]);
       if (rawJson) {
-        const parsed = normalizeStoreState(JSON.parse(rawJson));
-        globalThis.__lazordWarmStore = parsed;
-        return parsed;
+        const { state, migrated } = migrateLegacySeedState(JSON.parse(rawJson));
+        if (migrated) {
+          await kvCommand(kv, ['SET', STORE_KV_KEY, JSON.stringify(state)]);
+        }
+        globalThis.__lazordWarmStore = state;
+        return state;
       }
       const seeded = normalizeStoreState(INITIAL_SEED_STATE);
       await kvCommand(kv, ['SET', STORE_KV_KEY, JSON.stringify(seeded)]);
@@ -424,9 +393,14 @@ export async function readStoreState(): Promise<PersistedStoreState> {
       return initial;
     }
     const raw = fs.readFileSync(storeFile, 'utf8');
-    const normalized = normalizeStoreState(JSON.parse(raw));
-    globalThis.__lazordWarmStore = normalized;
-    return normalized;
+    const { state, migrated } = migrateLegacySeedState(JSON.parse(raw));
+    if (migrated) {
+      const tmpFile = `${storeFile}.${crypto.randomUUID()}.tmp`;
+      fs.writeFileSync(tmpFile, JSON.stringify(state, null, 2), 'utf8');
+      fs.renameSync(tmpFile, storeFile);
+    }
+    globalThis.__lazordWarmStore = state;
+    return state;
   } catch {
     if (!globalThis.__lazordWarmStore) {
       globalThis.__lazordWarmStore = normalizeStoreState(INITIAL_SEED_STATE);
@@ -635,13 +609,14 @@ function calculateCartTotals(
 }
 
 function computeStoreAnalytics(orders: Order[], totalStoreVisits: number) {
+  const approvedOrders = orders.filter(
+    (o) => o.status !== 'قيد المراجعة' && o.status !== 'مرفوض'
+  );
   return {
     totalSalesRevenue: roundOmr(
-      orders
-        .filter((o) => o.status !== 'مرفوض')
-        .reduce((sum, o) => sum + (Number.isFinite(o.finalTotal) ? o.finalTotal : 0), 0)
+      approvedOrders.reduce((sum, o) => sum + (Number.isFinite(o.finalTotal) ? o.finalTotal : 0), 0)
     ),
-    totalOrders: orders.length,
+    totalOrders: approvedOrders.length,
     pendingOrders: orders.filter((o) => o.status === 'قيد المراجعة').length,
     totalStoreVisits: Math.max(0, Math.floor(totalStoreVisits)),
   };

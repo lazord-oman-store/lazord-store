@@ -120,15 +120,29 @@ test('Vercel API handler handles env-based login, Bearer auth, and pre-parsed bo
     assert.match(setCookie, /SameSite=None/);
     assert.match(setCookie, /Partitioned/);
 
-    // 4. Protected admin dashboard succeeds with Bearer token
+    // 4. Protected admin dashboard succeeds with Bearer token and starts at clean zero baseline
     const dash = await invokeVercelApi({
       method: 'GET',
       url: '/api/index?__apiPath=admin/dashboard',
       headers: { authorization: `Bearer ${loginJson.token}` },
     });
     assert.equal(dash.statusCode, 200);
-    const dashJson = dash.json<{ analytics: { pendingOrders: number }; orders: unknown[] }>();
-    assert.ok(dashJson.orders.length >= 2);
+    const dashJson = dash.json<{
+      analytics: {
+        totalSalesRevenue: number;
+        totalOrders: number;
+        pendingOrders: number;
+        totalStoreVisits: number;
+      };
+      orders: unknown[];
+    }>();
+    assert.equal(dashJson.orders.length, 0);
+    assert.deepEqual(dashJson.analytics, {
+      totalSalesRevenue: 0,
+      totalOrders: 0,
+      pendingOrders: 0,
+      totalStoreVisits: 0,
+    });
 
     // 5. Image upload + order submission work in Vercel runtime
     const upload = await invokeVercelApi({
@@ -253,7 +267,7 @@ test('Vercel API falls back safely when KV/Redis fails and respects LAZORD_SESSI
       headers: { authorization: `Bearer ${token}` },
     });
     assert.equal(dash.statusCode, 200);
-    assert.equal(dash.json<{ analytics: { totalStoreVisits: number } }>().analytics.totalStoreVisits, 129);
+    assert.equal(dash.json<{ analytics: { totalStoreVisits: number } }>().analytics.totalStoreVisits, 1);
   } finally {
     resetTestVercelTmpData();
     if (prevVercel === undefined) delete process.env.VERCEL;
@@ -270,4 +284,262 @@ test('Vercel API falls back safely when KV/Redis fails and respects LAZORD_SESSI
     else process.env.LAZORD_SESSION_SECRET = prevSecret;
   }
 });
+
+test('Order lifecycle updates pending, approved order count, sales revenue, and visits accurately', async () => {
+  const prevVercel = process.env.VERCEL;
+  const prevUser = process.env.LAZORD_ADMIN_USERNAME;
+  const prevPass = process.env.LAZORD_ADMIN_PASSWORD;
+
+  try {
+    process.env.VERCEL = '1';
+    process.env.LAZORD_ADMIN_USERNAME = 'owner@lazord.om';
+    process.env.LAZORD_ADMIN_PASSWORD = 'LifecyclePass!2026';
+    resetTestVercelTmpData();
+
+    const login = await invokeVercelApi({
+      method: 'POST',
+      url: '/api/index?__apiPath=auth/login',
+      body: { username: 'owner@lazord.om', password: 'LifecyclePass!2026' },
+      preParsedBody: true,
+    });
+    const { token } = login.json<{ token: string }>();
+
+    // Record 1 storefront visit
+    const visit = await invokeVercelApi({
+      method: 'POST',
+      url: '/api/index?__apiPath=visits',
+      body: {},
+      preParsedBody: true,
+    });
+    assert.equal(visit.statusCode, 200);
+    assert.equal(visit.json<{ totalStoreVisits: number }>().totalStoreVisits, 1);
+
+    // Submit order #1 (34.000 OMR) -> enters as 'قيد المراجعة'
+    const order1Res = await invokeVercelApi({
+      method: 'POST',
+      url: '/api/index?__apiPath=orders',
+      body: {
+        customerName: 'سعيد الحارثي',
+        customerPhone: '91234567',
+        city: 'محافظة مسقط',
+        address: 'القرم، شارع 12',
+        items: [{ productId: 'prod-oud-sultani', quantity: 1 }],
+        receiptImageUrl: 'data:image/png;base64,iVBORw0KGgo=',
+      },
+      preParsedBody: true,
+    });
+    assert.equal(order1Res.statusCode, 201);
+    const order1 = order1Res.json<{ order: { id: string; status: string; finalTotal: number } }>().order;
+    assert.equal(order1.status, 'قيد المراجعة');
+    assert.equal(order1.finalTotal, 34);
+
+    // Dashboard right after order creation: pending=1, totalOrders=0, revenue=0, visits=1
+    const dashAfterOrder1 = await invokeVercelApi({
+      method: 'GET',
+      url: '/api/index?__apiPath=admin/dashboard',
+      headers: { authorization: `Bearer ${token}` },
+    });
+    assert.deepEqual(
+      dashAfterOrder1.json<{ analytics: Record<string, number> }>().analytics,
+      {
+        totalSalesRevenue: 0,
+        totalOrders: 0,
+        pendingOrders: 1,
+        totalStoreVisits: 1,
+      }
+    );
+
+    // Confirm order #1 -> pending=0, totalOrders=1, revenue=34
+    const confirmRes = await invokeVercelApi({
+      method: 'PATCH',
+      url: `/api/index?__apiPath=admin/orders/${order1.id}/status`,
+      headers: { authorization: `Bearer ${token}` },
+      body: { status: 'تم تأكيد الدفع' },
+      preParsedBody: true,
+    });
+    assert.equal(confirmRes.statusCode, 200);
+    assert.deepEqual(
+      confirmRes.json<{ analytics: Record<string, number> }>().analytics,
+      {
+        totalSalesRevenue: 34,
+        totalOrders: 1,
+        pendingOrders: 0,
+        totalStoreVisits: 1,
+      }
+    );
+
+    // Move order #1 to 'جاري التجهيز' -> no double-counting
+    const prepRes = await invokeVercelApi({
+      method: 'PATCH',
+      url: `/api/index?__apiPath=admin/orders/${order1.id}/status`,
+      headers: { authorization: `Bearer ${token}` },
+      body: { status: 'جاري التجهيز' },
+      preParsedBody: true,
+    });
+    assert.deepEqual(
+      prepRes.json<{ analytics: Record<string, number> }>().analytics,
+      {
+        totalSalesRevenue: 34,
+        totalOrders: 1,
+        pendingOrders: 0,
+        totalStoreVisits: 1,
+      }
+    );
+
+    // Submit order #2 (18.000 OMR) -> pending=1, totalOrders=1, revenue=34
+    const order2Res = await invokeVercelApi({
+      method: 'POST',
+      url: '/api/index?__apiPath=orders',
+      body: {
+        customerName: 'فاطمة المعمرية',
+        customerPhone: '98765432',
+        city: 'محافظة الداخلية',
+        address: 'نزوى، حي التراث',
+        items: [{ productId: 'prod-bukhoor-diwan', quantity: 1 }],
+        receiptImageUrl: 'data:image/png;base64,iVBORw0KGgo=',
+      },
+      preParsedBody: true,
+    });
+    assert.equal(order2Res.statusCode, 201);
+    const order2 = order2Res.json<{ order: { id: string } }>().order;
+
+    // Reject order #2 -> pending=0, totalOrders stays 1, revenue stays 34
+    const rejectRes = await invokeVercelApi({
+      method: 'PATCH',
+      url: `/api/index?__apiPath=admin/orders/${order2.id}/status`,
+      headers: { authorization: `Bearer ${token}` },
+      body: { status: 'مرفوض' },
+      preParsedBody: true,
+    });
+    assert.equal(rejectRes.statusCode, 200);
+    assert.deepEqual(
+      rejectRes.json<{ analytics: Record<string, number> }>().analytics,
+      {
+        totalSalesRevenue: 34,
+        totalOrders: 1,
+        pendingOrders: 0,
+        totalStoreVisits: 1,
+      }
+    );
+  } finally {
+    resetTestVercelTmpData();
+    if (prevVercel === undefined) delete process.env.VERCEL;
+    else process.env.VERCEL = prevVercel;
+    if (prevUser === undefined) delete process.env.LAZORD_ADMIN_USERNAME;
+    else process.env.LAZORD_ADMIN_USERNAME = prevUser;
+    if (prevPass === undefined) delete process.env.LAZORD_ADMIN_PASSWORD;
+    else process.env.LAZORD_ADMIN_PASSWORD = prevPass;
+  }
+});
+
+test('Legacy persisted stores strip demo seed orders and fake 128 visit baseline once', async () => {
+  const prevVercel = process.env.VERCEL;
+  const prevUser = process.env.LAZORD_ADMIN_USERNAME;
+  const prevPass = process.env.LAZORD_ADMIN_PASSWORD;
+
+  try {
+    process.env.VERCEL = '1';
+    process.env.LAZORD_ADMIN_USERNAME = 'owner@lazord.om';
+    process.env.LAZORD_ADMIN_PASSWORD = 'MigratePass!2026';
+    resetTestVercelTmpData();
+
+    const tmpDir = path.join(os.tmpdir(), 'lazord-data');
+    fs.mkdirSync(tmpDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(tmpDir, 'lazord-store.json'),
+      JSON.stringify({
+        totalStoreVisits: 128,
+        products: [
+          {
+            id: 'prod-custom-keep',
+            nameAr: 'دهن عود خاص',
+            category: 'perfume',
+            notesAr: 'عود صافي',
+            sizeLabel: '12 مل',
+            priceOmr: 45,
+            imageUrl: '/src/assets/images/perfume_royal_oud_1795258094810.jpg',
+            createdAt: '2026-11-01T00:00:00.000Z',
+          },
+        ],
+        promoCodes: [],
+        orders: [
+          {
+            id: 'ord-seed-1001',
+            orderNumber: 'LZD-1001',
+            trackingNumber: 'TRK-LZD-84920',
+            customerName: 'Demo 1',
+            customerPhone: '95128430',
+            city: 'محافظة مسقط',
+            address: 'بوشر',
+            items: [],
+            originalSubtotal: 44.2,
+            promoCodeUsed: null,
+            discountAmount: 0,
+            finalTotal: 44.2,
+            receiptImageUrl: '/api/seed-receipt/LZD-1001',
+            status: 'جاري التجهيز',
+            createdAt: '2026-11-18T11:30:00.000Z',
+            updatedAt: '2026-11-19T09:15:00.000Z',
+          },
+          {
+            id: 'ord-seed-1002',
+            orderNumber: 'LZD-1002',
+            trackingNumber: 'TRK-LZD-61504',
+            customerName: 'Demo 2',
+            customerPhone: '97410285',
+            city: 'محافظة ظفار',
+            address: 'صلالة',
+            items: [],
+            originalSubtotal: 28.5,
+            promoCodeUsed: null,
+            discountAmount: 0,
+            finalTotal: 28.5,
+            receiptImageUrl: '/api/seed-receipt/LZD-1002',
+            status: 'قيد المراجعة',
+            createdAt: '2026-11-20T14:20:00.000Z',
+            updatedAt: '2026-11-20T14:20:00.000Z',
+          },
+        ],
+      }),
+      'utf8'
+    );
+
+    const login = await invokeVercelApi({
+      method: 'POST',
+      url: '/api/index?__apiPath=auth/login',
+      body: { username: 'owner@lazord.om', password: 'MigratePass!2026' },
+      preParsedBody: true,
+    });
+    const { token } = login.json<{ token: string }>();
+
+    const dash = await invokeVercelApi({
+      method: 'GET',
+      url: '/api/index?__apiPath=admin/dashboard',
+      headers: { authorization: `Bearer ${token}` },
+    });
+    assert.equal(dash.statusCode, 200);
+    const body = dash.json<{
+      analytics: Record<string, number>;
+      orders: unknown[];
+      products: { id: string }[];
+    }>();
+    assert.equal(body.orders.length, 0);
+    assert.deepEqual(body.analytics, {
+      totalSalesRevenue: 0,
+      totalOrders: 0,
+      pendingOrders: 0,
+      totalStoreVisits: 0,
+    });
+    assert.equal(body.products[0]?.id, 'prod-custom-keep');
+  } finally {
+    resetTestVercelTmpData();
+    if (prevVercel === undefined) delete process.env.VERCEL;
+    else process.env.VERCEL = prevVercel;
+    if (prevUser === undefined) delete process.env.LAZORD_ADMIN_USERNAME;
+    else process.env.LAZORD_ADMIN_USERNAME = prevUser;
+    if (prevPass === undefined) delete process.env.LAZORD_ADMIN_PASSWORD;
+    else process.env.LAZORD_ADMIN_PASSWORD = prevPass;
+  }
+});
+
 
