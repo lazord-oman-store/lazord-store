@@ -3,8 +3,7 @@ import http from 'node:http';
 import path from 'node:path';
 import dotenv from 'dotenv';
 import { createServer as createViteServer } from 'vite';
-import { handleApiRequest } from './src/server/apiHandler';
-import { readStoreState } from './src/server/storePersistence';
+import apiHandler, { readStoreState } from './api/index';
 
 dotenv.config();
 
@@ -41,7 +40,7 @@ async function startServer(): Promise<void> {
     const pathname = new URL(reqUrl, 'http://localhost').pathname;
 
     if (pathname === '/api' || pathname.startsWith('/api/')) {
-      void handleApiRequest(req, res);
+      void apiHandler(req, res);
       return;
     }
 

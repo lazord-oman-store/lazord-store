@@ -211,3 +211,63 @@ test('Vercel API supports first-run setup claim only when LAZORD_ADMIN_PASSWORD 
     else process.env.LAZORD_ADMIN_PASSWORD = prevPass;
   }
 });
+
+test('Vercel API falls back safely when KV/Redis fails and respects LAZORD_SESSION_SECRET', async () => {
+  const prevVercel = process.env.VERCEL;
+  const prevKvUrl = process.env.KV_REST_API_URL;
+  const prevKvToken = process.env.KV_REST_API_TOKEN;
+  const prevUser = process.env.LAZORD_ADMIN_USERNAME;
+  const prevPass = process.env.LAZORD_ADMIN_PASSWORD;
+  const prevSecret = process.env.LAZORD_SESSION_SECRET;
+
+  try {
+    process.env.VERCEL = '1';
+    process.env.KV_REST_API_URL = 'http://127.0.0.1:9';
+    process.env.KV_REST_API_TOKEN = 'invalid-token';
+    process.env.LAZORD_ADMIN_USERNAME = 'owner@lazord.om';
+    process.env.LAZORD_ADMIN_PASSWORD = 'SecretPassword#1';
+    process.env.LAZORD_SESSION_SECRET = 'custom-vercel-session-secret-xyz';
+    resetTestVercelTmpData();
+
+    const visit = await invokeVercelApi({
+      method: 'POST',
+      url: '/api/index?__apiPath=visits',
+      body: {},
+      preParsedBody: true,
+    });
+    assert.equal(visit.statusCode, 200);
+    assert.equal(visit.json<{ ok: boolean }>().ok, true);
+
+    const login = await invokeVercelApi({
+      method: 'POST',
+      url: '/api/index?__apiPath=auth/login',
+      body: { username: 'owner@lazord.om', password: 'SecretPassword#1' },
+      preParsedBody: true,
+    });
+    assert.equal(login.statusCode, 200);
+    const { token } = login.json<{ token: string }>();
+
+    const dash = await invokeVercelApi({
+      method: 'GET',
+      url: '/api/index?__apiPath=admin/dashboard',
+      headers: { authorization: `Bearer ${token}` },
+    });
+    assert.equal(dash.statusCode, 200);
+    assert.equal(dash.json<{ analytics: { totalStoreVisits: number } }>().analytics.totalStoreVisits, 129);
+  } finally {
+    resetTestVercelTmpData();
+    if (prevVercel === undefined) delete process.env.VERCEL;
+    else process.env.VERCEL = prevVercel;
+    if (prevKvUrl === undefined) delete process.env.KV_REST_API_URL;
+    else process.env.KV_REST_API_URL = prevKvUrl;
+    if (prevKvToken === undefined) delete process.env.KV_REST_API_TOKEN;
+    else process.env.KV_REST_API_TOKEN = prevKvToken;
+    if (prevUser === undefined) delete process.env.LAZORD_ADMIN_USERNAME;
+    else process.env.LAZORD_ADMIN_USERNAME = prevUser;
+    if (prevPass === undefined) delete process.env.LAZORD_ADMIN_PASSWORD;
+    else process.env.LAZORD_ADMIN_PASSWORD = prevPass;
+    if (prevSecret === undefined) delete process.env.LAZORD_SESSION_SECRET;
+    else process.env.LAZORD_SESSION_SECRET = prevSecret;
+  }
+});
+
