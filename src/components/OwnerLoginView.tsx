@@ -1,0 +1,120 @@
+import { useState, type FormEvent } from 'react';
+import { ArrowRight, Lock } from 'lucide-react';
+import { storeRepository } from '../services/storeRepository';
+
+interface OwnerLoginViewProps {
+  onLoginSuccess: () => void;
+  onBackToStore: () => void;
+}
+
+export function OwnerLoginView({ onLoginSuccess, onBackToStore }: OwnerLoginViewProps) {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!username.trim() || !password) {
+      setError('يرجى إدخال البريد الإلكتروني أو اسم المستخدم وكلمة المرور.');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    try {
+      await storeRepository.loginOwner(username.trim(), password);
+      onLoginSuccess();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'فشل تسجيل الدخول.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-[#141311] text-[#FAF8F4] flex flex-col items-center justify-center p-4">
+      <div className="w-full max-w-md bg-[#1C1A17] border border-[#2F2A22] rounded-2xl p-6 sm:p-8 space-y-6 shadow-2xl">
+        <div className="space-y-2 text-center">
+          <div className="w-12 h-12 mx-auto rounded-full bg-[#B59449]/15 border border-[#B59449]/40 flex items-center justify-center">
+            <Lock className="w-5 h-5 text-[#D4B774]" aria-hidden="true" />
+          </div>
+          <h1 className="font-editorial text-2xl sm:text-3xl font-bold text-[#FAF8F4]">
+            LAZORD | تسجيل دخول صاحب البراند
+          </h1>
+          <p className="text-xs sm:text-sm text-[#B5AEA0]">
+            منطقة محمية خاصة بإدارة متجر لازورد للعطور والبخور.
+          </p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label
+              htmlFor="owner-username"
+              className="block text-xs font-medium text-[#D6CFC2] mb-1.5"
+            >
+              البريد الإلكتروني أو اسم المستخدم
+            </label>
+            <input
+              id="owner-username"
+              type="text"
+              dir="ltr"
+              autoComplete="username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="owner@lazord.om"
+              className="w-full px-4 py-2.5 min-h-[44px] bg-[#141311] border border-[#383229] rounded-lg text-sm text-[#FAF8F4] focus:outline-none focus:border-[#B59449]"
+            />
+          </div>
+
+          <div>
+            <label
+              htmlFor="owner-password"
+              className="block text-xs font-medium text-[#D6CFC2] mb-1.5"
+            >
+              كلمة المرور
+            </label>
+            <input
+              id="owner-password"
+              type="password"
+              dir="ltr"
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              className="w-full px-4 py-2.5 min-h-[44px] bg-[#141311] border border-[#383229] rounded-lg text-sm text-[#FAF8F4] focus:outline-none focus:border-[#B59449]"
+            />
+          </div>
+
+          {error && (
+            <div
+              role="alert"
+              className="p-3 rounded-lg bg-red-950/60 border border-red-800/70 text-xs sm:text-sm text-red-200"
+            >
+              {error}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full py-3 px-5 min-h-[46px] bg-[#B59449] hover:bg-[#C6A558] disabled:opacity-60 text-[#141311] font-bold text-sm rounded-lg transition-colors cursor-pointer"
+          >
+            {loading ? 'جاري التحقق...' : 'دخول إلى لوحة التحكم'}
+          </button>
+        </form>
+
+        <div className="pt-4 border-t border-[#2D2923] flex justify-center">
+          <button
+            type="button"
+            onClick={onBackToStore}
+            className="inline-flex items-center gap-2 text-xs text-[#B5AEA0] hover:text-[#FAF8F4] transition-colors cursor-pointer"
+          >
+            <ArrowRight className="w-4 h-4" aria-hidden="true" />
+            <span>العودة إلى متجر LAZORD</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

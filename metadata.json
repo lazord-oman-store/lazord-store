@@ -1,0 +1,6 @@
+{
+  "name": "LAZORD | لازورد",
+  "description": "متجر لازورد للعطور الفاخرة والبخور الأصيل — تجربة تسوق راقية مع تتبع فوري للطلبات ولوحة تحكم محمية لصاحب البراند.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,153 @@
+{
+  "products": [
+    {
+      "id": "prod-oud-sultani",
+      "nameAr": "عود لازورد الملكي",
+      "category": "perfume",
+      "notesAr": "العود الكمبودي المعتّق · الزعفران الفاخر · العنبر الأسود وخشب الصندل",
+      "sizeLabel": "100 مل · Eau de Parfum",
+      "priceOmr": 34,
+      "imageUrl": "/src/assets/images/perfume_royal_oud_1795258094810.jpg",
+      "featured": true,
+      "createdAt": "2026-10-12T09:00:00.000Z"
+    },
+    {
+      "id": "prod-amber-velvet",
+      "nameAr": "عنبر مخملي",
+      "category": "perfume",
+      "notesAr": "العنبر الدافئ · الفانيليا المدغشقرية · الهيل المحمّص واللبان الحوجري",
+      "sizeLabel": "100 مل · Extrait de Parfum",
+      "priceOmr": 28.5,
+      "imageUrl": "/src/assets/images/perfume_amber_velvet_1795258095576.jpg",
+      "featured": true,
+      "createdAt": "2026-10-14T09:00:00.000Z"
+    },
+    {
+      "id": "prod-musk-saffron",
+      "nameAr": "مسك الزعفران الأبيض",
+      "category": "perfume",
+      "notesAr": "المسك الصافي · خيوط الزعفران · زهر البرتقال وخشب الأرز الناعم",
+      "sizeLabel": "75 مل · Eau de Parfum",
+      "priceOmr": 24,
+      "imageUrl": "/src/assets/images/perfume_musk_saffron_1795258094847.jpg",
+      "featured": false,
+      "createdAt": "2026-10-16T09:00:00.000Z"
+    },
+    {
+      "id": "prod-bukhoor-diwan",
+      "nameAr": "بخور الديوان الفاخر",
+      "category": "bukhoor",
+      "notesAr": "رقائق العود الطبيعي المشبعة بدهن الورد الطائفي والعنبر الملكي",
+      "sizeLabel": "60 جم · علبة محفوظة",
+      "priceOmr": 18,
+      "imageUrl": "/src/assets/images/bukhoor_royal_charcoal_1795258094434.jpg",
+      "featured": true,
+      "createdAt": "2026-10-18T09:00:00.000Z"
+    },
+    {
+      "id": "prod-bukhoor-taif",
+      "nameAr": "معمول الطائف المعتّق",
+      "category": "bukhoor",
+      "notesAr": "كرات بخور يدوية بمسك الغزال والورد الطائفي ودهن العود الهندي",
+      "sizeLabel": "80 جم · وعاء خزفي ذهبي",
+      "priceOmr": 21.5,
+      "imageUrl": "/src/assets/images/bukhoor_taif_incense_1795258094152.jpg",
+      "featured": false,
+      "createdAt": "2026-10-20T09:00:00.000Z"
+    }
+  ],
+  "orders": [
+    {
+      "id": "ord-seed-1001",
+      "orderNumber": "LZD-1001",
+      "trackingNumber": "TRK-LZD-84920",
+      "customerName": "سلطان بن سعيد المعمري",
+      "customerPhone": "95128430",
+      "city": "محافظة مسقط",
+      "address": "بوشر، حي الصاروج، فيلا 18",
+      "items": [
+        {
+          "productId": "prod-oud-sultani",
+          "nameAr": "عود لازورد الملكي",
+          "category": "perfume",
+          "sizeLabel": "100 مل · Eau de Parfum",
+          "unitPriceOmr": 34,
+          "quantity": 1,
+          "lineTotalOmr": 34
+        },
+        {
+          "productId": "prod-bukhoor-diwan",
+          "nameAr": "بخور الديوان الفاخر",
+          "category": "bukhoor",
+          "sizeLabel": "60 جم · علبة محفوظة",
+          "unitPriceOmr": 18,
+          "quantity": 1,
+          "lineTotalOmr": 18
+        }
+      ],
+      "originalSubtotal": 52,
+      "promoCodeUsed": "LAZORD15",
+      "discountAmount": 7.8,
+      "finalTotal": 44.2,
+      "receiptImageUrl": "/api/seed-receipt/LZD-1001",
+      "status": "جاري التجهيز",
+      "createdAt": "2026-11-18T11:30:00.000Z",
+      "updatedAt": "2026-11-19T09:15:00.000Z"
+    },
+    {
+      "id": "ord-seed-1002",
+      "orderNumber": "LZD-1002",
+      "trackingNumber": "TRK-LZD-61504",
+      "customerName": "مريم بنت علي الرواحية",
+      "customerPhone": "97410285",
+      "city": "محافظة ظفار",
+      "address": "صلالة، منطقة السعادة الشمالية، بناية النخيل",
+      "items": [
+        {
+          "productId": "prod-amber-velvet",
+          "nameAr": "عنبر مخملي",
+          "category": "perfume",
+          "sizeLabel": "100 مل · Extrait de Parfum",
+          "unitPriceOmr": 28.5,
+          "quantity": 1,
+          "lineTotalOmr": 28.5
+        }
+      ],
+      "originalSubtotal": 28.5,
+      "promoCodeUsed": null,
+      "discountAmount": 0,
+      "finalTotal": 28.5,
+      "receiptImageUrl": "/api/seed-receipt/LZD-1002",
+      "status": "قيد المراجعة",
+      "createdAt": "2026-11-20T14:20:00.000Z",
+      "updatedAt": "2026-11-20T14:20:00.000Z"
+    }
+  ],
+  "promoCodes": [
+    {
+      "id": "promo-lazord15",
+      "code": "LAZORD15",
+      "discountType": "percentage",
+      "value": 15,
+      "active": true,
+      "createdAt": "2026-10-10T08:00:00.000Z"
+    },
+    {
+      "id": "promo-oud5",
+      "code": "OUD5",
+      "discountType": "fixed",
+      "value": 5,
+      "active": true,
+      "createdAt": "2026-10-15T08:00:00.000Z"
+    }
+  ],
+  "settings": {
+    "brandName": "LAZORD | لازورد",
+    "brandBio": "دار لازورد للعطور الفاخرة والبخور الأصيل؛ ننسج خلاصة العود المعتّق والزعفران واللبان العماني والعنبر الدافئ في تركيبات راقية تعبّر عن الفخامة العربية الهادئة والحرفية العالية.",
+    "bankPhoneNumber": "92481750",
+    "bankAccountLabel": "حساب تحويل بنكي مباشر — دار لازورد للعطور",
+    "whatsappNumber": "96879115527",
+    "currencyLabel": "ر.ع"
+  },
+  "totalStoreVisits": 129
+}
