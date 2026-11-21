@@ -24,6 +24,7 @@ import {
   shouldPlayOrderChime,
 } from '../lib/adminAlertLogic';
 import { playOrderChime, unlockOrderAudioContext } from '../lib/soundChime';
+import { readImageFileAsUploadDataUrl } from '../lib/imageUpload';
 import {
   buildOwnerStatusWhatsAppUrl,
   formatOmr,
@@ -269,20 +270,16 @@ export function AdminDashboard({
     setProdImage(product.imageUrl);
   };
 
-  const handleProductImageUpload = (e: ChangeEvent<HTMLInputElement>) => {
+  const handleProductImageUpload = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = async () => {
-      try {
-        const dataUrl = typeof reader.result === 'string' ? reader.result : '';
-        const url = await storeRepository.uploadImage(dataUrl);
-        setProdImage(url);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'تعذر رفع صورة المنتج.');
-      }
-    };
-    reader.readAsDataURL(file);
+    try {
+      const dataUrl = await readImageFileAsUploadDataUrl(file);
+      const url = await storeRepository.uploadImage(dataUrl);
+      setProdImage(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'تعذر رفع صورة المنتج.');
+    }
   };
 
   const handleSaveProduct = async (e: FormEvent) => {

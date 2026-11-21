@@ -35,7 +35,8 @@ export interface LazordStoreRepository {
   ): Promise<{ promo: PromoCode; totals: CartTotalsResult }>;
   submitOrder(payload: CreateOrderPayload): Promise<Order>;
   trackOrder(trackingNumber: string): Promise<PublicOrderTracking>;
-  getOwnerSession(): Promise<{ authenticated: boolean; username?: string }>;
+  getOwnerSession(): Promise<{ authenticated: boolean; username?: string; needsSetup?: boolean }>;
+  setupOwner(username: string, password: string): Promise<{ authenticated: boolean; username: string }>;
   loginOwner(username: string, password: string): Promise<{ authenticated: boolean; username: string }>;
   logoutOwner(): Promise<void>;
   getAdminDashboard(): Promise<AdminDashboardData>;
@@ -60,6 +61,17 @@ export class UnauthorizedError extends Error {
   constructor(message: string) {
     super(message);
     this.name = 'UnauthorizedError';
+  }
+}
+
+export class ApiRequestError extends Error {
+  readonly status: number;
+  readonly needsSetup?: boolean;
+  constructor(message: string, status: number, needsSetup?: boolean) {
+    super(message);
+    this.name = 'ApiRequestError';
+    this.status = status;
+    this.needsSetup = needsSetup;
   }
 }
 
@@ -129,7 +141,18 @@ async function requestJson<T>(
     },
   });
 
-  const payload = (await response.json().catch(() => ({}))) as { error?: string } & T;
+  const contentType = response.headers.get('content-type') || '';
+  if (!contentType.includes('application/json')) {
+    throw new ApiRequestError(
+      'تعذر الوصول إلى خدمة الخادم (/api). يرجى التأكد من تفعيل مسارات API في بيئة النشر.',
+      response.status
+    );
+  }
+
+  const payload = (await response.json().catch(() => ({}))) as {
+    error?: string;
+    needsSetup?: boolean;
+  } & T;
   if (response.status === 401 && options?.attachAuth) {
     clearStoredOwnerToken();
     throw new UnauthorizedError(
@@ -137,7 +160,11 @@ async function requestJson<T>(
     );
   }
   if (!response.ok) {
-    throw new Error(payload.error || 'حدث خطأ أثناء الاتصال بالخادم.');
+    throw new ApiRequestError(
+      payload.error || 'حدث خطأ أثناء الاتصال بالخادم.',
+      response.status,
+      payload.needsSetup
+    );
   }
   return payload;
 }
@@ -184,12 +211,29 @@ class ApiStoreRepository implements LazordStoreRepository {
     return res.order;
   }
 
-  getOwnerSession(): Promise<{ authenticated: boolean; username?: string }> {
-    return requestJson<{ authenticated: boolean; username?: string }>(
+  getOwnerSession(): Promise<{ authenticated: boolean; username?: string; needsSetup?: boolean }> {
+    return requestJson<{ authenticated: boolean; username?: string; needsSetup?: boolean }>(
       '/api/auth/session',
       undefined,
       { attachAuth: true }
     );
+  }
+
+  async setupOwner(
+    username: string,
+    password: string
+  ): Promise<{ authenticated: boolean; username: string }> {
+    const res = await requestJson<{ authenticated: boolean; username: string; token?: string }>(
+      '/api/auth/setup',
+      {
+        method: 'POST',
+        body: JSON.stringify({ username, password }),
+      }
+    );
+    if (res.token) {
+      setStoredOwnerToken(res.token);
+    }
+    return { authenticated: res.authenticated, username: res.username };
   }
 
   async loginOwner(

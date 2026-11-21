@@ -12,6 +12,7 @@ import {
   Trash2,
   X,
 } from 'lucide-react';
+import { readImageFileAsUploadDataUrl } from '../lib/imageUpload';
 import {
   BANK_TRANSFER_INSTRUCTION,
   OMAN_GOVERNORATES,
@@ -120,32 +121,24 @@ export function CartCheckoutDrawer({
     setPromoError(null);
   };
 
-  const handleReceiptFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+  const handleReceiptFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setCheckoutError(null);
     setUploadingReceipt(true);
-    const reader = new FileReader();
-    reader.onload = async () => {
-      try {
-        const dataUrl = typeof reader.result === 'string' ? reader.result : '';
-        const uploadedUrl = await storeRepository.uploadImage(dataUrl);
-        setReceiptImageUrl(uploadedUrl);
-      } catch (err) {
-        setReceiptImageUrl('');
-        setCheckoutError(
-          err instanceof Error ? err.message : 'تعذر رفع صورة الإيصال، حاول مرة أخرى.'
-        );
-      } finally {
-        setUploadingReceipt(false);
-      }
-    };
-    reader.onerror = () => {
+    try {
+      const dataUrl = await readImageFileAsUploadDataUrl(file);
+      const uploadedUrl = await storeRepository.uploadImage(dataUrl);
+      setReceiptImageUrl(uploadedUrl);
+    } catch (err) {
+      setReceiptImageUrl('');
+      setCheckoutError(
+        err instanceof Error ? err.message : 'تعذر رفع صورة الإيصال، حاول مرة أخرى.'
+      );
+    } finally {
       setUploadingReceipt(false);
-      setCheckoutError('تعذر قراءة ملف الصورة المختار.');
-    };
-    reader.readAsDataURL(file);
+    }
   };
 
   const handleSubmitOrder = async (e: FormEvent) => {

@@ -1,13 +1,19 @@
 import { useState, type FormEvent } from 'react';
 import { ArrowRight, Lock } from 'lucide-react';
-import { storeRepository } from '../services/storeRepository';
+import { ApiRequestError, storeRepository } from '../services/storeRepository';
 
 interface OwnerLoginViewProps {
+  initialNeedsSetup?: boolean;
   onLoginSuccess: () => void;
   onBackToStore: () => void;
 }
 
-export function OwnerLoginView({ onLoginSuccess, onBackToStore }: OwnerLoginViewProps) {
+export function OwnerLoginView({
+  initialNeedsSetup = false,
+  onLoginSuccess,
+  onBackToStore,
+}: OwnerLoginViewProps) {
+  const [needsSetup, setNeedsSetup] = useState(initialNeedsSetup);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -23,9 +29,16 @@ export function OwnerLoginView({ onLoginSuccess, onBackToStore }: OwnerLoginView
     setLoading(true);
     setError(null);
     try {
-      await storeRepository.loginOwner(username.trim(), password);
+      if (needsSetup) {
+        await storeRepository.setupOwner(username.trim(), password);
+      } else {
+        await storeRepository.loginOwner(username.trim(), password);
+      }
       onLoginSuccess();
     } catch (err) {
+      if (err instanceof ApiRequestError && err.needsSetup) {
+        setNeedsSetup(true);
+      }
       setError(err instanceof Error ? err.message : 'فشل تسجيل الدخول.');
     } finally {
       setLoading(false);
@@ -40,10 +53,12 @@ export function OwnerLoginView({ onLoginSuccess, onBackToStore }: OwnerLoginView
             <Lock className="w-5 h-5 text-[#D4B774]" aria-hidden="true" />
           </div>
           <h1 className="font-editorial text-2xl sm:text-3xl font-bold text-[#FAF8F4]">
-            LAZORD | تسجيل دخول صاحب البراند
+            {needsSetup ? 'LAZORD | إعداد حساب صاحب البراند' : 'LAZORD | تسجيل دخول صاحب البراند'}
           </h1>
           <p className="text-xs sm:text-sm text-[#B5AEA0]">
-            منطقة محمية خاصة بإدارة متجر لازورد للعطور والبخور.
+            {needsSetup
+              ? 'أنشئ بيانات دخول صاحب البراند لأول مرة، أو اضبط LAZORD_ADMIN_USERNAME و LAZORD_ADMIN_PASSWORD في إعدادات Vercel.'
+              : 'منطقة محمية خاصة بإدارة متجر لازورد للعطور والبخور.'}
           </p>
         </div>
 
@@ -78,7 +93,7 @@ export function OwnerLoginView({ onLoginSuccess, onBackToStore }: OwnerLoginView
               id="owner-password"
               type="password"
               dir="ltr"
-              autoComplete="current-password"
+              autoComplete={needsSetup ? 'new-password' : 'current-password'}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
@@ -100,7 +115,11 @@ export function OwnerLoginView({ onLoginSuccess, onBackToStore }: OwnerLoginView
             disabled={loading}
             className="w-full py-3 px-5 min-h-[46px] bg-[#B59449] hover:bg-[#C6A558] disabled:opacity-60 text-[#141311] font-bold text-sm rounded-lg transition-colors cursor-pointer"
           >
-            {loading ? 'جاري التحقق...' : 'دخول إلى لوحة التحكم'}
+            {loading
+              ? 'جاري التحقق...'
+              : needsSetup
+                ? 'حفظ بيانات الدخول والدخول للوحة'
+                : 'دخول إلى لوحة التحكم'}
           </button>
         </form>
 

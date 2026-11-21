@@ -24,6 +24,7 @@ export default function App() {
   const [adminMode, setAdminMode] = useState<boolean>(() => isAdminLocation());
   const [checkingSession, setCheckingSession] = useState<boolean>(() => isAdminLocation());
   const [ownerAuthenticated, setOwnerAuthenticated] = useState(false);
+  const [needsOwnerSetup, setNeedsOwnerSetup] = useState(false);
 
   // Public Storefront State
   const [products, setProducts] = useState<Product[]>(INITIAL_SEED_STATE.products);
@@ -69,8 +70,14 @@ export default function App() {
         setCheckingSession(true);
         storeRepository
           .getOwnerSession()
-          .then((res) => setOwnerAuthenticated(Boolean(res.authenticated)))
-          .catch(() => setOwnerAuthenticated(false))
+          .then((res) => {
+            setOwnerAuthenticated(Boolean(res.authenticated));
+            setNeedsOwnerSetup(Boolean(res.needsSetup));
+          })
+          .catch(() => {
+            setOwnerAuthenticated(false);
+            setNeedsOwnerSetup(false);
+          })
           .finally(() => setCheckingSession(false));
       }
     };
@@ -123,8 +130,14 @@ export default function App() {
     setCheckingSession(true);
     storeRepository
       .getOwnerSession()
-      .then((res) => setOwnerAuthenticated(Boolean(res.authenticated)))
-      .catch(() => setOwnerAuthenticated(false))
+      .then((res) => {
+        setOwnerAuthenticated(Boolean(res.authenticated));
+        setNeedsOwnerSetup(Boolean(res.needsSetup));
+      })
+      .catch(() => {
+        setOwnerAuthenticated(false);
+        setNeedsOwnerSetup(false);
+      })
       .finally(() => setCheckingSession(false));
   };
 
@@ -150,7 +163,11 @@ export default function App() {
     if (!ownerAuthenticated) {
       return (
         <OwnerLoginView
-          onLoginSuccess={() => setOwnerAuthenticated(true)}
+          initialNeedsSetup={needsOwnerSetup}
+          onLoginSuccess={() => {
+            setNeedsOwnerSetup(false);
+            setOwnerAuthenticated(true);
+          }}
           onBackToStore={handleExitAdminToStore}
         />
       );
