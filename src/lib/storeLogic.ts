@@ -154,14 +154,49 @@ export function computeStoreAnalytics(
   };
 }
 
+export const LAZORD_WHATSAPP_NUMBER = '96879115527';
+
+function normalizeAsciiDigits(raw: string): string {
+  return raw
+    .replace(/[\u0660-\u0669]/g, (ch) => String(ch.charCodeAt(0) - 0x0660))
+    .replace(/[\u06F0-\u06F9]/g, (ch) => String(ch.charCodeAt(0) - 0x06f0));
+}
+
 export function sanitizeWhatsAppDigits(phone: string): string {
-  const digits = phone.replace(/[^\d]/g, '');
+  const ascii = normalizeAsciiDigits(String(phone || ''));
+  let digits = ascii.replace(/[^\d]/g, '').replace(/^0+/, '');
   if (!digits) return '';
+
+  // Remove accidental trunk zero after Oman country code (e.g., 968091234567 -> 96891234567)
+  if (digits.startsWith('9680') && digits.length === 12) {
+    digits = `968${digits.slice(4)}`;
+  }
+
   // Default Oman country code 968 if 8-digit local number provided
   if (digits.length === 8) {
     return `968${digits}`;
   }
   return digits;
+}
+
+function safeEncodeWhatsAppText(text: string): string {
+  const clean = text.replace(
+    /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g,
+    ''
+  );
+  return encodeURIComponent(clean);
+}
+
+export const LAZORD_WHATSAPP_GREETING =
+  'مرحباً دار LAZORD | لازورد، أود الاستفسار عن العطور والبخور.';
+
+export function buildBrandDirectWhatsAppUrl(
+  brandWhatsapp?: string,
+  greeting: string = LAZORD_WHATSAPP_GREETING
+): string {
+  const cleaned = sanitizeWhatsAppDigits(brandWhatsapp || '');
+  const target = cleaned.length >= 8 ? cleaned : LAZORD_WHATSAPP_NUMBER;
+  return `https://wa.me/${target}?text=${safeEncodeWhatsAppText(greeting)}`;
 }
 
 export function buildCustomerOrderWhatsAppUrl(
@@ -180,7 +215,8 @@ export function buildCustomerOrderWhatsAppUrl(
     | 'finalTotal'
   >
 ): string {
-  const target = sanitizeWhatsAppDigits(brandWhatsapp || '96879115527');
+  const cleanedBrand = sanitizeWhatsAppDigits(brandWhatsapp);
+  const target = cleanedBrand.length >= 8 ? cleanedBrand : LAZORD_WHATSAPP_NUMBER;
   const itemLines = order.items.map(
     (item) => `- ${item.nameAr} × ${item.quantity} (${formatOmr(item.lineTotalOmr)})`
   );
@@ -203,7 +239,7 @@ export function buildCustomerOrderWhatsAppUrl(
   lines.push(`السعر النهائي: ${formatOmr(order.finalTotal)}`);
   lines.push(`إيصال الدفع: تم رفع وإرفاق صورة إيصال التحويل البنكي مع الطلب.`);
 
-  return `https://wa.me/${target}?text=${encodeURIComponent(lines.join('\n'))}`;
+  return `https://wa.me/${target}?text=${safeEncodeWhatsAppText(lines.join('\n'))}`;
 }
 
 export function buildOwnerStatusWhatsAppUrl(
@@ -211,6 +247,10 @@ export function buildOwnerStatusWhatsAppUrl(
   order: Pick<Order, 'customerName' | 'orderNumber' | 'trackingNumber' | 'status' | 'finalTotal'>
 ): string {
   const target = sanitizeWhatsAppDigits(customerPhone);
+  if (target.length < 8) {
+    return '';
+  }
+
   const statusDetails: Record<OrderStatus, string> = {
     'قيد المراجعة': 'طلبك حالياً قيد المراجعة من قبل فريق لازورد.',
     'تم تأكيد الدفع': 'تم تأكيد استلام مبلغ التحويل البنكي بنجاح.',
@@ -229,7 +269,7 @@ export function buildOwnerStatusWhatsAppUrl(
     `إجمالي الطلب: ${formatOmr(order.finalTotal)}`,
   ].join('\n');
 
-  return `https://wa.me/${target}?text=${encodeURIComponent(message)}`;
+  return `https://wa.me/${target}?text=${safeEncodeWhatsAppText(message)}`;
 }
 
 export interface CheckoutValidationInput {
@@ -248,7 +288,7 @@ export function validateCheckoutInput(input: CheckoutValidationInput): string | 
   if (input.customerName.trim().length < 2) {
     return 'يرجى إدخال الاسم الكامل بشكل صحيح.';
   }
-  const phoneDigits = input.customerPhone.replace(/[^\d]/g, '');
+  const phoneDigits = sanitizeWhatsAppDigits(input.customerPhone);
   if (phoneDigits.length < 8) {
     return 'يرجى إدخال رقم هاتف صحيح للتواصل.';
   }

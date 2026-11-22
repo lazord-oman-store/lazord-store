@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  buildBrandDirectWhatsAppUrl,
   buildCustomerOrderWhatsAppUrl,
   buildOwnerStatusWhatsAppUrl,
   calculateCartTotals,
@@ -8,6 +9,7 @@ import {
   formatOmr,
   generateNextOrderNumber,
   generateUniqueTrackingNumber,
+  sanitizeWhatsAppDigits,
   validateCheckoutInput,
 } from './storeLogic';
 import type { Product, PromoCode } from '../types/store';
@@ -135,8 +137,27 @@ test('formatOmr formats 3 decimal places with ر.ع', () => {
   assert.equal(formatOmr(24.5), '24.500 ر.ع');
 });
 
-test('WhatsApp URL builders encode order and status details cleanly', () => {
-  const customerUrl = buildCustomerOrderWhatsAppUrl('96879115527', {
+test('sanitizeWhatsAppDigits normalizes leading zeros, +, spaces, Arabic digits, and Oman 968 prefix', () => {
+  assert.equal(sanitizeWhatsAppDigits('98765432'), '96898765432');
+  assert.equal(sanitizeWhatsAppDigits('098765432'), '96898765432');
+  assert.equal(sanitizeWhatsAppDigits('+968 9876-5432'), '96898765432');
+  assert.equal(sanitizeWhatsAppDigits('00968 9876 5432'), '96898765432');
+  assert.equal(sanitizeWhatsAppDigits('968098765432'), '96898765432');
+  assert.equal(sanitizeWhatsAppDigits('٩٨٧٦٥٤٣٢'), '96898765432');
+  assert.equal(sanitizeWhatsAppDigits('00971 50 123 4567'), '971501234567');
+  assert.equal(sanitizeWhatsAppDigits('   '), '');
+});
+
+test('WhatsApp URL builders use official wa.me format and handle malformed or empty inputs safely', () => {
+  const blankDirectUrl = buildBrandDirectWhatsAppUrl('   ');
+  assert.ok(blankDirectUrl.startsWith('https://wa.me/96879115527?text='));
+  assert.ok(decodeURIComponent(blankDirectUrl).includes('LAZORD | لازورد'));
+
+  const intlDirectUrl = buildBrandDirectWhatsAppUrl('+968 7911 5527');
+  assert.ok(intlDirectUrl.startsWith('https://wa.me/96879115527?text='));
+  assert.ok(!intlDirectUrl.includes('api.whatsapp.com'));
+
+  const baseOrder = {
     orderNumber: 'LZD-1003',
     trackingNumber: 'TRK-LZD-44210',
     customerName: 'أحمد الحارثي',
@@ -150,15 +171,18 @@ test('WhatsApp URL builders encode order and status details cleanly', () => {
       {
         productId: 'prod-1',
         nameAr: 'عود لازورد الملكي',
-        category: 'perfume',
+        category: 'perfume' as const,
         sizeLabel: '100 مل',
         unitPriceOmr: 35,
         quantity: 1,
         lineTotalOmr: 35,
       },
     ],
-  });
+  };
+
+  const customerUrl = buildCustomerOrderWhatsAppUrl('96879115527', baseOrder);
   assert.ok(customerUrl.startsWith('https://wa.me/96879115527?text='));
+  assert.ok(!customerUrl.includes('api.whatsapp.com'));
   const decodedCustomer = decodeURIComponent(customerUrl);
   assert.ok(decodedCustomer.includes('LAZORD | لازورد'));
   assert.ok(decodedCustomer.includes('LZD-1003'));
@@ -167,7 +191,11 @@ test('WhatsApp URL builders encode order and status details cleanly', () => {
   assert.ok(decodedCustomer.includes('عود لازورد الملكي'));
   assert.ok(decodedCustomer.includes('إيصال'));
 
-  const ownerUrl = buildOwnerStatusWhatsAppUrl('98765432', {
+  // Blank or invalid brand number falls back cleanly to 96879115527
+  const fallbackCustomerUrl = buildCustomerOrderWhatsAppUrl('   ', baseOrder);
+  assert.ok(fallbackCustomerUrl.startsWith('https://wa.me/96879115527?text='));
+
+  const ownerUrl = buildOwnerStatusWhatsAppUrl('098765432', {
     customerName: 'سارة البلوشي',
     orderNumber: 'LZD-1002',
     trackingNumber: 'TRK-LZD-73194',
@@ -175,7 +203,29 @@ test('WhatsApp URL builders encode order and status details cleanly', () => {
     finalTotal: 34.0,
   });
   assert.ok(ownerUrl.startsWith('https://wa.me/96898765432?text='));
+  assert.ok(!ownerUrl.includes('api.whatsapp.com'));
   assert.ok(decodeURIComponent(ownerUrl).includes('تم الشحن'));
+
+  const ownerIntlUrl = buildOwnerStatusWhatsAppUrl('+968 9123-4567', {
+    customerName: 'سارة البلوشي',
+    orderNumber: 'LZD-1002',
+    trackingNumber: 'TRK-LZD-73194',
+    status: 'تم الشحن',
+    finalTotal: 34.0,
+  });
+  assert.ok(ownerIntlUrl.startsWith('https://wa.me/96891234567?text='));
+
+  // Invalid short customer phone returns empty string instead of broken wa.me/?text=
+  assert.equal(
+    buildOwnerStatusWhatsAppUrl('123', {
+      customerName: 'سارة',
+      orderNumber: 'LZD-1002',
+      trackingNumber: 'TRK-LZD-73194',
+      status: 'تم الشحن',
+      finalTotal: 34.0,
+    }),
+    ''
+  );
 });
 
 test('validateCheckoutInput requires receipt image, Oman governorate, and valid customer fields', () => {

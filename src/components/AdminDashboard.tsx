@@ -728,7 +728,9 @@ export function AdminDashboard({
                       .filter((o) =>
                         orderFilter === 'pending' ? o.status === 'قيد المراجعة' : true
                       )
-                      .map((order) => (
+                      .map((order) => {
+                        const ownerWhatsAppUrl = buildOwnerStatusWhatsAppUrl(order.customerPhone, order);
+                        return (
                       <article
                         key={order.id}
                         data-testid={`admin-order-${order.orderNumber}`}
@@ -863,19 +865,31 @@ export function AdminDashboard({
                               ))}
                             </select>
 
-                            <a
-                              href={buildOwnerStatusWhatsAppUrl(order.customerPhone, order)}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1.5 px-3.5 py-2 min-h-[40px] text-xs font-semibold bg-[#141311] hover:bg-[#8E6F2D] text-[#FAF8F4] rounded-lg transition-colors whitespace-nowrap"
-                            >
-                              <MessageCircle className="w-3.5 h-3.5" aria-hidden="true" />
-                              <span>إرسال الحالة للعميل واتساب</span>
-                            </a>
+                            {ownerWhatsAppUrl ? (
+                              <a
+                                href={ownerWhatsAppUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                data-testid={`admin-whatsapp-btn-${order.orderNumber}`}
+                                className="inline-flex items-center gap-1.5 px-3.5 py-2 min-h-[40px] text-xs font-semibold bg-[#141311] hover:bg-[#8E6F2D] text-[#FAF8F4] rounded-lg transition-colors whitespace-nowrap"
+                              >
+                                <MessageCircle className="w-3.5 h-3.5" aria-hidden="true" />
+                                <span>إرسال الحالة للعميل واتساب</span>
+                              </a>
+                            ) : (
+                              <span
+                                data-testid={`admin-whatsapp-invalid-${order.orderNumber}`}
+                                className="inline-flex items-center gap-1.5 px-3.5 py-2 min-h-[40px] text-xs font-medium bg-[#F2EDE3] text-[#7A7367] rounded-lg whitespace-nowrap"
+                              >
+                                <MessageCircle className="w-3.5 h-3.5" aria-hidden="true" />
+                                <span>رقم الهاتف غير صالح للواتساب</span>
+                              </span>
+                            )}
                           </div>
                         </div>
                       </article>
-                    ))}
+                        );
+                      })}
                   </div>
                 )}
               </section>

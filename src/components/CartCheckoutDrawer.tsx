@@ -15,6 +15,7 @@ import {
 import { readImageFileAsUploadDataUrl } from '../lib/imageUpload';
 import {
   BANK_TRANSFER_INSTRUCTION,
+  LAZORD_WHATSAPP_NUMBER,
   OMAN_GOVERNORATES,
   ORDER_CONFIRMATION_MESSAGE,
   buildCustomerOrderWhatsAppUrl,
@@ -638,7 +639,7 @@ export function CartCheckoutDrawer({
               <div className="space-y-3 pt-2">
                 <a
                   href={buildCustomerOrderWhatsAppUrl(
-                    settings.whatsappNumber || '96879115527',
+                    settings.whatsappNumber || LAZORD_WHATSAPP_NUMBER,
                     confirmedOrder
                   )}
                   target="_blank"

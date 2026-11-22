@@ -622,6 +622,21 @@ function computeStoreAnalytics(orders: Order[], totalStoreVisits: number) {
   };
 }
 
+function sanitizeWhatsAppDigits(phone: string): string {
+  const ascii = String(phone || '')
+    .replace(/[\u0660-\u0669]/g, (ch) => String(ch.charCodeAt(0) - 0x0660))
+    .replace(/[\u06F0-\u06F9]/g, (ch) => String(ch.charCodeAt(0) - 0x06f0));
+  let digits = ascii.replace(/[^\d]/g, '').replace(/^0+/, '');
+  if (!digits) return '';
+  if (digits.startsWith('9680') && digits.length === 12) {
+    digits = `968${digits.slice(4)}`;
+  }
+  if (digits.length === 8) {
+    return `968${digits}`;
+  }
+  return digits;
+}
+
 function validateCheckoutInput(input: {
   customerName: string;
   customerPhone: string;
@@ -632,7 +647,7 @@ function validateCheckoutInput(input: {
 }): string | null {
   if (input.itemCount <= 0) return 'سلة التسوق فارغة، يرجى إضافة منتج واحد على الأقل.';
   if (input.customerName.trim().length < 2) return 'يرجى إدخال الاسم الكامل بشكل صحيح.';
-  if (input.customerPhone.replace(/[^\d]/g, '').length < 8) {
+  if (sanitizeWhatsAppDigits(input.customerPhone).length < 8) {
     return 'يرجى إدخال رقم هاتف صحيح للتواصل.';
   }
   if (!OMAN_GOVERNORATES.includes(input.city.trim() as (typeof OMAN_GOVERNORATES)[number])) {
@@ -1509,7 +1524,10 @@ export default async function handler(
               : state.settings.bankAccountLabel,
           whatsappNumber:
             body.whatsappNumber !== undefined
-              ? body.whatsappNumber.trim() || state.settings.whatsappNumber
+              ? (() => {
+                  const cleaned = sanitizeWhatsAppDigits(body.whatsappNumber);
+                  return cleaned.length >= 8 ? cleaned : state.settings.whatsappNumber;
+                })()
               : state.settings.whatsappNumber,
         };
         await writeStoreState(state);
