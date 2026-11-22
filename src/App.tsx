@@ -274,7 +274,6 @@ export default function App() {
       <TrackOrderModal
         isOpen={trackModalOpen}
         initialTrackingNumber={trackInitialNumber}
-        whatsappNumber={settings.whatsappNumber}
         onClose={() => setTrackModalOpen(false)}
       />
     </div>

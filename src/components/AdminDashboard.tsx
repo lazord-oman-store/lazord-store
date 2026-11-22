@@ -25,13 +25,12 @@ import {
 import { playOrderChime, unlockOrderAudioContext } from '../lib/soundChime';
 import { readImageFileAsUploadDataUrl } from '../lib/imageUpload';
 import {
-  buildOwnerStatusWhatsAppUrl,
   formatOmr,
   getCategoryLabelAr,
 } from '../lib/storeLogic';
 import { storeRepository, UnauthorizedError } from '../services/storeRepository';
+import { BrandLogo } from './BrandLogo';
 import { OmrPrice } from './OmrPrice';
-import { WhatsAppIcon } from './WhatsAppIcon';
 import {
   ORDER_STATUS_LIST,
   type AdminDashboardData,
@@ -429,10 +428,15 @@ export function AdminDashboard({
     <div className="min-h-screen bg-[#FAF8F4] text-[#181715]">
       {/* Protected Dashboard Header */}
       <header className="sticky top-0 z-30 bg-[#141311] text-[#FAF8F4] border-b border-[#2D2923]">
-        <div className="max-w-[1320px] mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+        <div className="max-w-[1320px] mx-auto px-4 sm:px-6 lg:px-8 h-[72px] flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
+            <BrandLogo
+              variant="dark"
+              className="w-14 h-14 shrink-0"
+              imgClassName="scale-[1.08]"
+            />
             <span className="font-editorial text-xl font-bold text-[#D4B774] whitespace-nowrap">
-              LAZORD | لوحة تحكم صاحب البراند
+              لوحة تحكم صاحب البراند
             </span>
           </div>
 
@@ -728,9 +732,7 @@ export function AdminDashboard({
                       .filter((o) =>
                         orderFilter === 'pending' ? o.status === 'قيد المراجعة' : true
                       )
-                      .map((order) => {
-                        const ownerWhatsAppUrl = buildOwnerStatusWhatsAppUrl(order.customerPhone, order);
-                        return (
+                      .map((order) => (
                       <article
                         key={order.id}
                         data-testid={`admin-order-${order.orderNumber}`}
@@ -864,32 +866,10 @@ export function AdminDashboard({
                                 </option>
                               ))}
                             </select>
-
-                            {ownerWhatsAppUrl ? (
-                              <a
-                                href={ownerWhatsAppUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                data-testid={`admin-whatsapp-btn-${order.orderNumber}`}
-                                className="inline-flex items-center gap-1.5 px-3.5 py-2 min-h-[40px] text-xs font-semibold bg-[#141311] hover:bg-[#8E6F2D] text-[#FAF8F4] rounded-lg transition-colors whitespace-nowrap"
-                              >
-                                <WhatsAppIcon className="w-3.5 h-3.5 shrink-0" />
-                                <span>إرسال الحالة للعميل واتساب</span>
-                              </a>
-                            ) : (
-                              <span
-                                data-testid={`admin-whatsapp-invalid-${order.orderNumber}`}
-                                className="inline-flex items-center gap-1.5 px-3.5 py-2 min-h-[40px] text-xs font-medium bg-[#F2EDE3] text-[#7A7367] rounded-lg whitespace-nowrap"
-                              >
-                                <WhatsAppIcon className="w-3.5 h-3.5 shrink-0" />
-                                <span>رقم الهاتف غير صالح للواتساب</span>
-                              </span>
-                            )}
                           </div>
                         </div>
                       </article>
-                        );
-                      })}
+                      ))}
                   </div>
                 )}
               </section>

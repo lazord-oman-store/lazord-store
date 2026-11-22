@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
-import { ArrowRight, Lock } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { ApiRequestError, storeRepository } from '../services/storeRepository';
+import { BrandLogo } from './BrandLogo';
 
 interface OwnerLoginViewProps {
   initialNeedsSetup?: boolean;
@@ -49,11 +50,13 @@ export function OwnerLoginView({
     <div className="min-h-screen bg-[#141311] text-[#FAF8F4] flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-md bg-[#1C1A17] border border-[#2F2A22] rounded-2xl p-6 sm:p-8 space-y-6 shadow-2xl">
         <div className="space-y-2 text-center">
-          <div className="w-12 h-12 mx-auto rounded-full bg-[#B59449]/15 border border-[#B59449]/40 flex items-center justify-center">
-            <Lock className="w-5 h-5 text-[#D4B774]" aria-hidden="true" />
-          </div>
+          <BrandLogo
+            variant="dark"
+            className="mx-auto w-36 h-36"
+            imgClassName="scale-[1.08]"
+          />
           <h1 className="font-editorial text-2xl sm:text-3xl font-bold text-[#FAF8F4]">
-            {needsSetup ? 'LAZORD | إعداد حساب صاحب البراند' : 'LAZORD | تسجيل دخول صاحب البراند'}
+            {needsSetup ? 'إعداد حساب صاحب البراند' : 'تسجيل دخول صاحب البراند'}
           </h1>
           <p className="text-xs sm:text-sm text-[#B5AEA0]">
             {needsSetup

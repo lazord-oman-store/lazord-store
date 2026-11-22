@@ -1,12 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  LAZORD_WHATSAPP_MESSAGE_LINK,
   buildBrandDirectWhatsAppUrl,
   buildCustomerOrderWhatsAppUrl,
   buildOwnerStatusWhatsAppUrl,
   buildWhatsAppUrl,
   calculateCartTotals,
   computeStoreAnalytics,
+  formatCustomerOrderWhatsAppMessage,
   formatOmr,
   generateNextOrderNumber,
   generateUniqueTrackingNumber,
@@ -160,6 +162,47 @@ test('buildWhatsAppUrl unified helper encodes text cleanly and rejects invalid n
   assert.equal(local, `https://wa.me/96891234567?text=${encodeURIComponent('تحديث الطلب')}`);
   assert.equal(buildWhatsAppUrl('12345', 'مرحباً'), '');
   assert.equal(buildWhatsAppUrl('', 'مرحباً'), '');
+});
+
+test('LAZORD_WHATSAPP_MESSAGE_LINK and formatCustomerOrderWhatsAppMessage match exact requested storefront template', () => {
+  assert.equal(LAZORD_WHATSAPP_MESSAGE_LINK, 'https://wa.me/message/W6HN5EKAT2GLK1');
+  assert.ok(!LAZORD_WHATSAPP_MESSAGE_LINK.includes('?text='));
+
+  const formatted = formatCustomerOrderWhatsAppMessage({
+    finalTotal: 69,
+    items: [
+      {
+        productId: 'prod-1',
+        nameAr: 'عطر عود السلاطين',
+        category: 'perfume',
+        sizeLabel: '100 مل',
+        unitPriceOmr: 32,
+        quantity: 1,
+        lineTotalOmr: 32,
+      },
+      {
+        productId: 'prod-2',
+        nameAr: 'بخور لازورد الملكي',
+        category: 'bukhoor',
+        sizeLabel: '50 جم',
+        unitPriceOmr: 18.5,
+        quantity: 2,
+        lineTotalOmr: 37,
+      },
+    ],
+  });
+
+  assert.equal(
+    formatted,
+    [
+      'شكراً لك على دعمك لبراند لازورد للعطور',
+      '',
+      'تفاصيل الطلب:',
+      '- عطر عود السلاطين (الكمية: 1 × 32.000 ر.ع)',
+      '- بخور لازورد الملكي (الكمية: 2 × 18.500 ر.ع)',
+      'السعر الكلي: 69.000 ر.ع',
+    ].join('\n')
+  );
 });
 
 test('WhatsApp URL builders use official wa.me format and handle malformed or empty inputs safely', () => {

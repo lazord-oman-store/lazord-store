@@ -1,4 +1,5 @@
 import { Search, ShoppingBag } from 'lucide-react';
+import { BrandLogo } from './BrandLogo';
 
 interface StoreHeaderProps {
   cartCount: number;
@@ -22,14 +23,20 @@ export function StoreHeader({
   };
 
   return (
-    <header className="sticky top-0 z-40 bg-[#FAF8F4]/95 backdrop-blur-md border-b border-[#E7E0D2]">
-      <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4 sm:gap-8">
-        {/* Zone 1: Single-line Brand Wordmark */}
+    <header className="sticky top-0 z-40 bg-[#FAF8F4] border-b border-[#E7E0D2]">
+      <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 h-[88px] sm:h-[96px] flex items-center justify-between gap-4 sm:gap-8">
+        {/* Zone 1: Official Brand Logo Blended onto Header */}
         <a
           href="#top"
-          className="font-editorial text-xl sm:text-2xl font-bold tracking-tight text-[#181715] whitespace-nowrap shrink-0 focus-visible:outline-2 focus-visible:outline-[#8E6F2D] rounded-sm"
+          aria-label="LAZORD | لازورد - الرئيسية"
+          data-testid="header-brand-logo"
+          className="inline-flex items-center shrink-0 focus-visible:outline-2 focus-visible:outline-[#8E6F2D] rounded-lg"
         >
-          LAZORD | لازورد
+          <BrandLogo
+            variant="light"
+            className="w-[78px] h-[78px] sm:w-[88px] sm:h-[88px]"
+            imgClassName="scale-[1.06]"
+          />
         </a>
 
         {/* Zone 2: Concise single-line navigation links */}

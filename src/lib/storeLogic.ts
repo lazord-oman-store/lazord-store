@@ -155,6 +155,23 @@ export function computeStoreAnalytics(
 }
 
 export const LAZORD_WHATSAPP_NUMBER = '96879115527';
+export const LAZORD_WHATSAPP_MESSAGE_LINK = 'https://wa.me/message/W6HN5EKAT2GLK1';
+
+export function formatCustomerOrderWhatsAppMessage(
+  order: Pick<Order, 'items' | 'finalTotal'>
+): string {
+  const itemLines = order.items.map(
+    (item) => `- ${item.nameAr} (الكمية: ${item.quantity} × ${formatOmr(item.unitPriceOmr)})`
+  );
+
+  return [
+    'شكراً لك على دعمك لبراند لازورد للعطور',
+    '',
+    'تفاصيل الطلب:',
+    ...itemLines,
+    `السعر الكلي: ${formatOmr(order.finalTotal)}`,
+  ].join('\n');
+}
 
 function normalizeAsciiDigits(raw: string): string {
   return raw

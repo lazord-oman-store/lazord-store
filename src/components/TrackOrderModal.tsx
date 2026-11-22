@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { CheckCircle2, Clock, PackageCheck, Search, Truck, X, XCircle } from 'lucide-react';
-import { LAZORD_WHATSAPP_NUMBER, buildBrandDirectWhatsAppUrl } from '../lib/storeLogic';
+import { LAZORD_WHATSAPP_MESSAGE_LINK } from '../lib/storeLogic';
 import { storeRepository } from '../services/storeRepository';
 import type { OrderStatus, PublicOrderTracking } from '../types/store';
 import { OmrPrice } from './OmrPrice';
@@ -9,7 +9,6 @@ import { WhatsAppIcon } from './WhatsAppIcon';
 interface TrackOrderModalProps {
   isOpen: boolean;
   initialTrackingNumber?: string;
-  whatsappNumber?: string;
   onClose: () => void;
 }
 
@@ -41,7 +40,6 @@ function StatusIcon({ status }: { status: OrderStatus }) {
 export function TrackOrderModal({
   isOpen,
   initialTrackingNumber = '',
-  whatsappNumber = LAZORD_WHATSAPP_NUMBER,
   onClose,
 }: TrackOrderModalProps) {
   const [trackingInput, setTrackingInput] = useState(initialTrackingNumber);
@@ -184,10 +182,7 @@ export function TrackOrderModal({
                     تم رفض الطلب أو تعذر تأكيد إيصال التحويل البنكي. يرجى التواصل مع خدمة العملاء عبر واتساب للمراجعة.
                   </p>
                   <a
-                    href={buildBrandDirectWhatsAppUrl(
-                      whatsappNumber || LAZORD_WHATSAPP_NUMBER,
-                      `مرحباً دار LAZORD | لازورد، أود مراجعة حالة الطلب رقم ${result.orderNumber} (رقم التتبع: ${result.trackingNumber}).`
-                    )}
+                    href={LAZORD_WHATSAPP_MESSAGE_LINK}
                     target="_blank"
                     rel="noopener noreferrer"
                     data-testid="track-rejected-whatsapp-btn"

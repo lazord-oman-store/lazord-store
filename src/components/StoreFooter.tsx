@@ -1,11 +1,8 @@
 import { useRef } from 'react';
 import { Instagram } from 'lucide-react';
-import {
-  LAZORD_INSTAGRAM_URL,
-  LAZORD_WHATSAPP_NUMBER,
-  buildBrandDirectWhatsAppUrl,
-} from '../lib/storeLogic';
+import { LAZORD_INSTAGRAM_URL, LAZORD_WHATSAPP_MESSAGE_LINK } from '../lib/storeLogic';
 import type { StoreSettings } from '../types/store';
+import { BrandLogo } from './BrandLogo';
 import { WhatsAppIcon } from './WhatsAppIcon';
 
 interface StoreFooterProps {
@@ -32,18 +29,16 @@ export function StoreFooter({ settings, onSecretAdminTrigger }: StoreFooterProps
     }
   };
 
-  const waUrl = buildBrandDirectWhatsAppUrl(
-    settings.whatsappNumber || LAZORD_WHATSAPP_NUMBER
-  );
-
   return (
     <footer className="bg-[#141311] text-[#CFC7B8] border-t border-[#2B2721]">
       <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-8 pb-10 border-b border-[#2A2620]">
-          <div className="md:col-span-6 space-y-3">
-            <p className="font-editorial text-2xl font-bold text-[#FAF8F4]">
-              {settings.brandName}
-            </p>
+          <div className="md:col-span-6 space-y-4">
+            <BrandLogo
+              variant="dark"
+              className="w-36 h-36 sm:w-44 sm:h-44"
+              imgClassName="scale-[1.08]"
+            />
             <p className="text-sm leading-relaxed text-[#B5AEA0] max-w-xl">
               {settings.brandBio}
             </p>
@@ -53,7 +48,7 @@ export function StoreFooter({ settings, onSecretAdminTrigger }: StoreFooterProps
             <p className="text-sm font-medium text-[#FAF8F4]">خدمة العملاء والاستفسارات</p>
             <div className="flex flex-wrap items-center gap-3">
               <a
-                href={waUrl}
+                href={LAZORD_WHATSAPP_MESSAGE_LINK}
                 target="_blank"
                 rel="noopener noreferrer"
                 data-testid="footer-whatsapp-btn"

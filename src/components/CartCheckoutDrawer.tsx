@@ -14,11 +14,11 @@ import {
 import { readImageFileAsUploadDataUrl } from '../lib/imageUpload';
 import {
   BANK_TRANSFER_INSTRUCTION,
-  LAZORD_WHATSAPP_NUMBER,
+  LAZORD_WHATSAPP_MESSAGE_LINK,
   OMAN_GOVERNORATES,
   ORDER_CONFIRMATION_MESSAGE,
-  buildCustomerOrderWhatsAppUrl,
   calculateCartTotals,
+  formatCustomerOrderWhatsAppMessage,
   validateCheckoutInput,
 } from '../lib/storeLogic';
 import { storeRepository } from '../services/storeRepository';
@@ -71,6 +71,8 @@ export function CartCheckoutDrawer({
   const [copiedBank, setCopiedBank] = useState(false);
   const [copiedOrderNum, setCopiedOrderNum] = useState(false);
   const [copiedTrackingNum, setCopiedTrackingNum] = useState(false);
+  const [copiedOrderMessage, setCopiedOrderMessage] = useState(false);
+  const [whatsappCopyNotice, setWhatsappCopyNotice] = useState(false);
 
   // Confirmation state
   const [confirmedOrder, setConfirmedOrder] = useState<Order | null>(null);
@@ -80,18 +82,63 @@ export function CartCheckoutDrawer({
     [items, appliedPromo]
   );
 
+  const orderWhatsAppMessage = useMemo(
+    () => (confirmedOrder ? formatCustomerOrderWhatsAppMessage(confirmedOrder) : ''),
+    [confirmedOrder]
+  );
+
   if (!isOpen) return null;
 
-  const copyText = async (value: string, setter: (v: boolean) => void) => {
+  const fallbackCopyToClipboard = (value: string): boolean => {
     try {
-      await navigator.clipboard.writeText(value);
-      setter(true);
-      setTimeout(() => setter(false), 2000);
+      const textarea = document.createElement('textarea');
+      textarea.value = value;
+      textarea.setAttribute('readonly', '');
+      textarea.style.position = 'fixed';
+      textarea.style.top = '0';
+      textarea.style.left = '0';
+      textarea.style.opacity = '0';
+      textarea.style.pointerEvents = 'none';
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      const copied = document.execCommand('copy');
+      document.body.removeChild(textarea);
+      return copied;
     } catch {
-      // Fallback if clipboard blocked
-      setter(true);
-      setTimeout(() => setter(false), 2000);
+      return false;
     }
+  };
+
+  const copyTextReliable = (value: string, onDone?: () => void): void => {
+    // Run synchronous fallback immediately so clipboard is populated before target="_blank" switches focus
+    const syncCopied = fallbackCopyToClipboard(value);
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+      navigator.clipboard
+        .writeText(value)
+        .then(() => {
+          onDone?.();
+        })
+        .catch(() => {
+          if (syncCopied) {
+            onDone?.();
+          }
+        });
+      if (syncCopied) {
+        onDone?.();
+      }
+      return;
+    }
+    if (syncCopied) {
+      onDone?.();
+    }
+  };
+
+  const copyText = (value: string, setter: (v: boolean) => void) => {
+    copyTextReliable(value, () => {
+      setter(true);
+      setTimeout(() => setter(false), 2400);
+    });
   };
 
   const handleApplyPromo = async () => {
@@ -193,6 +240,8 @@ export function CartCheckoutDrawer({
     if (step === 'confirmation') {
       setStep('cart');
       setConfirmedOrder(null);
+      setCopiedOrderMessage(false);
+      setWhatsappCopyNotice(false);
     }
     onClose();
   };
@@ -638,20 +687,73 @@ export function CartCheckoutDrawer({
 
               <div className="space-y-3 pt-2">
                 <a
-                  href={buildCustomerOrderWhatsAppUrl(
-                    settings.whatsappNumber || LAZORD_WHATSAPP_NUMBER,
-                    confirmedOrder
-                  )}
+                  href={LAZORD_WHATSAPP_MESSAGE_LINK}
                   target="_blank"
                   rel="noopener noreferrer"
                   data-testid="confirm-whatsapp-btn"
+                  onClick={() => {
+                    if (orderWhatsAppMessage) {
+                      copyTextReliable(orderWhatsAppMessage, () => {
+                        setCopiedOrderMessage(true);
+                        setWhatsappCopyNotice(true);
+                      });
+                    }
+                  }}
                   className="w-full inline-flex items-center justify-center gap-2 px-5 py-3.5 min-h-[48px] bg-[#15803D] hover:bg-[#166534] text-white text-sm sm:text-base font-bold rounded-lg transition-colors shadow-sm"
                 >
                   <WhatsAppIcon className="w-4 h-4 shrink-0" />
                   <span>إرسال تفاصيل الطلب على واتساب المتجر</span>
                 </a>
+
+                {whatsappCopyNotice && (
+                  <div
+                    role="status"
+                    data-testid="whatsapp-copy-notice"
+                    className="p-3 rounded-xl bg-emerald-50 border border-emerald-300 text-xs sm:text-sm font-semibold text-emerald-900 text-center"
+                  >
+                    تم نسخ تفاصيل طلبك، قم بلصقها في محادثة الواتساب
+                  </div>
+                )}
+
+                <div className="bg-white border border-[#E7E0D2] rounded-xl p-4 space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs font-semibold text-[#181715]">نص تفاصيل الطلب للواتساب</p>
+                    <button
+                      type="button"
+                      data-testid="copy-order-message-btn"
+                      onClick={() =>
+                        copyText(orderWhatsAppMessage, (copied) => {
+                          setCopiedOrderMessage(copied);
+                          if (copied) setWhatsappCopyNotice(true);
+                        })
+                      }
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 min-h-[36px] bg-[#EFE9DC] hover:bg-[#E2D9C5] text-[#181715] text-xs font-medium rounded-lg cursor-pointer whitespace-nowrap"
+                    >
+                      {copiedOrderMessage ? (
+                        <>
+                          <Check className="w-3.5 h-3.5 text-[#15803D]" aria-hidden="true" />
+                          <span>تم النسخ</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3.5 h-3.5" aria-hidden="true" />
+                          <span>نسخ نص الطلب</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  <div
+                    dir="rtl"
+                    data-testid="order-whatsapp-message-preview"
+                    className="p-3 rounded-lg bg-[#FAF8F4] border border-[#EAE3D5] text-xs sm:text-sm text-[#181715] text-start whitespace-pre-line font-sans leading-relaxed select-all"
+                  >
+                    {orderWhatsAppMessage}
+                  </div>
+                </div>
+
                 <p className="text-xs text-center text-[#615B52]">
-                  أرسل ملخص طلبك مباشرة إلى واتساب المتجر لتسريع مراجعة الإيصال وتأكيد التجهيز.
+                  عند الضغط على زر واتساب المتجر يتم نسخ نص الطلب تلقائياً وفتح المحادثة مباشرة لتقوم بلصق الرسالة وإرسالها.
                 </p>
 
                 <button

@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { ArrowDownLeft, Sparkles } from 'lucide-react';
+import { ArrowDownLeft } from 'lucide-react';
+import { BrandLogo } from './BrandLogo';
 
 interface StoreHeroProps {
   brandBio: string;
@@ -13,15 +14,20 @@ export function StoreHero({ brandBio, onExploreCatalog }: StoreHeroProps) {
     <section id="top" className="bg-[#141311] text-[#FAF8F4] border-b border-[#2B2721]">
       <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-20">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-stretch">
-          {/* Editorial Copy Column */}
-          <div className="lg:col-span-6 flex flex-col justify-center space-y-6 py-2">
+          {/* Editorial Copy Column with Prominent Official Logo */}
+          <div className="lg:col-span-6 flex flex-col justify-center items-start space-y-6 py-2">
+            <h1 className="sr-only">LAZORD | لازورد — عطور فاخرة وبخور أصيل</h1>
+
             <p className="text-xs sm:text-sm tracking-wide text-[#D4B774] font-medium">
               دار العطور الملكية · البخور العماني الأصيل
             </p>
 
-            <h1 className="font-editorial text-4xl sm:text-5xl lg:text-[56px] font-bold leading-[1.2] text-[#FAF8F4] text-balance">
-              LAZORD | لازورد
-            </h1>
+            <BrandLogo
+              variant="dark"
+              data-testid="hero-brand-logo"
+              className="w-52 h-52 sm:w-64 sm:h-64"
+              imgClassName="scale-[1.08]"
+            />
 
             <p className="text-base sm:text-lg leading-[1.85] text-[#DDD6C8] max-w-xl">
               {brandBio}
@@ -52,9 +58,7 @@ export function StoreHero({ brandBio, onExploreCatalog }: StoreHeroProps) {
                 />
               ) : (
                 <div className="w-full h-full flex flex-col items-center justify-center p-8 text-center bg-gradient-to-br from-[#1F1C17] to-[#141311]">
-                  <Sparkles className="w-10 h-10 text-[#B59449] mb-3" aria-hidden="true" />
-                  <p className="font-editorial text-2xl text-[#FAF8F4]">LAZORD | لازورد</p>
-                  <p className="text-sm text-[#B8B0A0] mt-2">عطور فاخرة وبخور أصيل</p>
+                  <BrandLogo variant="dark" className="w-44 h-44" imgClassName="scale-[1.08]" />
                 </div>
               )}
               <div
