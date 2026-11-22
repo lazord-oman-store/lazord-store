@@ -626,10 +626,13 @@ function sanitizeWhatsAppDigits(phone: string): string {
   const ascii = String(phone || '')
     .replace(/[\u0660-\u0669]/g, (ch) => String(ch.charCodeAt(0) - 0x0660))
     .replace(/[\u06F0-\u06F9]/g, (ch) => String(ch.charCodeAt(0) - 0x06f0));
-  let digits = ascii.replace(/[^\d]/g, '').replace(/^0+/, '');
+  const digits = ascii.replace(/[^\d]/g, '').replace(/^0+/, '');
   if (!digits) return '';
-  if (digits.startsWith('9680') && digits.length === 12) {
-    digits = `968${digits.slice(4)}`;
+  if (digits.startsWith('968')) {
+    const subscriber = digits.slice(3).replace(/^0+/, '');
+    if (subscriber.length === 8) {
+      return `968${subscriber}`;
+    }
   }
   if (digits.length === 8) {
     return `968${digits}`;

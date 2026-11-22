@@ -1,12 +1,15 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { CheckCircle2, Clock, PackageCheck, Search, Truck, X, XCircle } from 'lucide-react';
+import { LAZORD_WHATSAPP_NUMBER, buildBrandDirectWhatsAppUrl } from '../lib/storeLogic';
 import { storeRepository } from '../services/storeRepository';
 import type { OrderStatus, PublicOrderTracking } from '../types/store';
 import { OmrPrice } from './OmrPrice';
+import { WhatsAppIcon } from './WhatsAppIcon';
 
 interface TrackOrderModalProps {
   isOpen: boolean;
   initialTrackingNumber?: string;
+  whatsappNumber?: string;
   onClose: () => void;
 }
 
@@ -38,6 +41,7 @@ function StatusIcon({ status }: { status: OrderStatus }) {
 export function TrackOrderModal({
   isOpen,
   initialTrackingNumber = '',
+  whatsappNumber = LAZORD_WHATSAPP_NUMBER,
   onClose,
 }: TrackOrderModalProps) {
   const [trackingInput, setTrackingInput] = useState(initialTrackingNumber);
@@ -175,8 +179,23 @@ export function TrackOrderModal({
 
               {/* Status Progress Steps */}
               {result.status === 'مرفوض' ? (
-                <div className="p-4 rounded-lg bg-red-50 border border-red-200 text-sm text-red-900">
-                  تم رفض الطلب أو تعذر تأكيد إيصال التحويل البنكي. يرجى التواصل مع خدمة العملاء عبر واتساب للمراجعة.
+                <div className="p-4 rounded-lg bg-red-50 border border-red-200 text-sm text-red-900 space-y-3">
+                  <p>
+                    تم رفض الطلب أو تعذر تأكيد إيصال التحويل البنكي. يرجى التواصل مع خدمة العملاء عبر واتساب للمراجعة.
+                  </p>
+                  <a
+                    href={buildBrandDirectWhatsAppUrl(
+                      whatsappNumber || LAZORD_WHATSAPP_NUMBER,
+                      `مرحباً دار LAZORD | لازورد، أود مراجعة حالة الطلب رقم ${result.orderNumber} (رقم التتبع: ${result.trackingNumber}).`
+                    )}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    data-testid="track-rejected-whatsapp-btn"
+                    className="inline-flex items-center gap-2 px-4 py-2 min-h-[40px] rounded-lg bg-[#141311] hover:bg-[#8E6F2D] text-[#FAF8F4] text-xs font-semibold transition-colors whitespace-nowrap"
+                  >
+                    <WhatsAppIcon className="w-4 h-4 text-[#B59449] shrink-0" />
+                    <span>تواصل معنا عبر واتساب</span>
+                  </a>
                 </div>
               ) : (
                 <div className="space-y-2">

@@ -6,7 +6,6 @@ import {
   Edit3,
   Eye,
   LogOut,
-  MessageCircle,
   Package,
   Plus,
   Receipt,
@@ -32,6 +31,7 @@ import {
 } from '../lib/storeLogic';
 import { storeRepository, UnauthorizedError } from '../services/storeRepository';
 import { OmrPrice } from './OmrPrice';
+import { WhatsAppIcon } from './WhatsAppIcon';
 import {
   ORDER_STATUS_LIST,
   type AdminDashboardData,
@@ -873,7 +873,7 @@ export function AdminDashboard({
                                 data-testid={`admin-whatsapp-btn-${order.orderNumber}`}
                                 className="inline-flex items-center gap-1.5 px-3.5 py-2 min-h-[40px] text-xs font-semibold bg-[#141311] hover:bg-[#8E6F2D] text-[#FAF8F4] rounded-lg transition-colors whitespace-nowrap"
                               >
-                                <MessageCircle className="w-3.5 h-3.5" aria-hidden="true" />
+                                <WhatsAppIcon className="w-3.5 h-3.5 shrink-0" />
                                 <span>إرسال الحالة للعميل واتساب</span>
                               </a>
                             ) : (
@@ -881,7 +881,7 @@ export function AdminDashboard({
                                 data-testid={`admin-whatsapp-invalid-${order.orderNumber}`}
                                 className="inline-flex items-center gap-1.5 px-3.5 py-2 min-h-[40px] text-xs font-medium bg-[#F2EDE3] text-[#7A7367] rounded-lg whitespace-nowrap"
                               >
-                                <MessageCircle className="w-3.5 h-3.5" aria-hidden="true" />
+                                <WhatsAppIcon className="w-3.5 h-3.5 shrink-0" />
                                 <span>رقم الهاتف غير صالح للواتساب</span>
                               </span>
                             )}

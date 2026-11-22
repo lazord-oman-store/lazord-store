@@ -4,6 +4,7 @@ import {
   buildBrandDirectWhatsAppUrl,
   buildCustomerOrderWhatsAppUrl,
   buildOwnerStatusWhatsAppUrl,
+  buildWhatsAppUrl,
   calculateCartTotals,
   computeStoreAnalytics,
   formatOmr,
@@ -143,9 +144,22 @@ test('sanitizeWhatsAppDigits normalizes leading zeros, +, spaces, Arabic digits,
   assert.equal(sanitizeWhatsAppDigits('+968 9876-5432'), '96898765432');
   assert.equal(sanitizeWhatsAppDigits('00968 9876 5432'), '96898765432');
   assert.equal(sanitizeWhatsAppDigits('968098765432'), '96898765432');
+  assert.equal(sanitizeWhatsAppDigits('+968 0098765432'), '96898765432');
   assert.equal(sanitizeWhatsAppDigits('٩٨٧٦٥٤٣٢'), '96898765432');
   assert.equal(sanitizeWhatsAppDigits('00971 50 123 4567'), '971501234567');
   assert.equal(sanitizeWhatsAppDigits('   '), '');
+});
+
+test('buildWhatsAppUrl unified helper encodes text cleanly and rejects invalid numbers', () => {
+  const direct = buildWhatsAppUrl('+968 7911-5527', 'مرحباً لازورد!');
+  assert.equal(
+    direct,
+    `https://wa.me/96879115527?text=${encodeURIComponent('مرحباً لازورد!')}`
+  );
+  const local = buildWhatsAppUrl('091234567', 'تحديث الطلب');
+  assert.equal(local, `https://wa.me/96891234567?text=${encodeURIComponent('تحديث الطلب')}`);
+  assert.equal(buildWhatsAppUrl('12345', 'مرحباً'), '');
+  assert.equal(buildWhatsAppUrl('', 'مرحباً'), '');
 });
 
 test('WhatsApp URL builders use official wa.me format and handle malformed or empty inputs safely', () => {

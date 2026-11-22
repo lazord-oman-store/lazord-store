@@ -5,7 +5,6 @@ import {
   CheckCircle2,
   Copy,
   ImagePlus,
-  MessageCircle,
   Minus,
   Plus,
   ShoppingBag,
@@ -25,6 +24,7 @@ import {
 import { storeRepository } from '../services/storeRepository';
 import type { CartItem, Order, PromoCode, StoreSettings } from '../types/store';
 import { OmrPrice } from './OmrPrice';
+import { WhatsAppIcon } from './WhatsAppIcon';
 
 interface CartCheckoutDrawerProps {
   isOpen: boolean;
@@ -647,7 +647,7 @@ export function CartCheckoutDrawer({
                   data-testid="confirm-whatsapp-btn"
                   className="w-full inline-flex items-center justify-center gap-2 px-5 py-3.5 min-h-[48px] bg-[#15803D] hover:bg-[#166534] text-white text-sm sm:text-base font-bold rounded-lg transition-colors shadow-sm"
                 >
-                  <MessageCircle className="w-4 h-4" aria-hidden="true" />
+                  <WhatsAppIcon className="w-4 h-4 shrink-0" />
                   <span>إرسال تفاصيل الطلب على واتساب المتجر</span>
                 </a>
                 <p className="text-xs text-center text-[#615B52]">

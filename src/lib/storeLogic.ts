@@ -164,12 +164,15 @@ function normalizeAsciiDigits(raw: string): string {
 
 export function sanitizeWhatsAppDigits(phone: string): string {
   const ascii = normalizeAsciiDigits(String(phone || ''));
-  let digits = ascii.replace(/[^\d]/g, '').replace(/^0+/, '');
+  const digits = ascii.replace(/[^\d]/g, '').replace(/^0+/, '');
   if (!digits) return '';
 
-  // Remove accidental trunk zero after Oman country code (e.g., 968091234567 -> 96891234567)
-  if (digits.startsWith('9680') && digits.length === 12) {
-    digits = `968${digits.slice(4)}`;
+  // Remove accidental trunk zero(s) after Oman country code (e.g., 968091234567 -> 96891234567)
+  if (digits.startsWith('968')) {
+    const subscriber = digits.slice(3).replace(/^0+/, '');
+    if (subscriber.length === 8) {
+      return `968${subscriber}`;
+    }
   }
 
   // Default Oman country code 968 if 8-digit local number provided
@@ -187,6 +190,19 @@ function safeEncodeWhatsAppText(text: string): string {
   return encodeURIComponent(clean);
 }
 
+/**
+ * Unified direct WhatsApp URL builder using official https://wa.me/<digits>?text=<encoded> format.
+ * Automatically strips symbols/spaces/+/00/leading-0 and prepends Oman code (968) for 8-digit local numbers.
+ * Returns empty string if the cleaned phone number has fewer than 8 digits.
+ */
+export function buildWhatsAppUrl(phone: string, message: string): string {
+  const cleanedPhone = sanitizeWhatsAppDigits(phone);
+  if (cleanedPhone.length < 8) {
+    return '';
+  }
+  return `https://wa.me/${cleanedPhone}?text=${safeEncodeWhatsAppText(message)}`;
+}
+
 export const LAZORD_WHATSAPP_GREETING =
   'مرحباً دار LAZORD | لازورد، أود الاستفسار عن العطور والبخور.';
 
@@ -196,7 +212,7 @@ export function buildBrandDirectWhatsAppUrl(
 ): string {
   const cleaned = sanitizeWhatsAppDigits(brandWhatsapp || '');
   const target = cleaned.length >= 8 ? cleaned : LAZORD_WHATSAPP_NUMBER;
-  return `https://wa.me/${target}?text=${safeEncodeWhatsAppText(greeting)}`;
+  return buildWhatsAppUrl(target, greeting);
 }
 
 export function buildCustomerOrderWhatsAppUrl(
@@ -224,7 +240,7 @@ export function buildCustomerOrderWhatsAppUrl(
   const lines = [
     `طلب جديد من متجر LAZORD | لازورد`,
     `رقم الطلب: ${order.orderNumber}`,
-    `رقم التتبع: ${order.trackingNumber}`,
+    ...(order.trackingNumber ? [`رقم التتبع: ${order.trackingNumber}`] : []),
     `اسم العميل: ${order.customerName}`,
     `رقم الهاتف: ${order.customerPhone}`,
     `المحافظة والعنوان: ${order.city} - ${order.address}`,
@@ -239,18 +255,13 @@ export function buildCustomerOrderWhatsAppUrl(
   lines.push(`السعر النهائي: ${formatOmr(order.finalTotal)}`);
   lines.push(`إيصال الدفع: تم رفع وإرفاق صورة إيصال التحويل البنكي مع الطلب.`);
 
-  return `https://wa.me/${target}?text=${safeEncodeWhatsAppText(lines.join('\n'))}`;
+  return buildWhatsAppUrl(target, lines.join('\n'));
 }
 
 export function buildOwnerStatusWhatsAppUrl(
   customerPhone: string,
   order: Pick<Order, 'customerName' | 'orderNumber' | 'trackingNumber' | 'status' | 'finalTotal'>
 ): string {
-  const target = sanitizeWhatsAppDigits(customerPhone);
-  if (target.length < 8) {
-    return '';
-  }
-
   const statusDetails: Record<OrderStatus, string> = {
     'قيد المراجعة': 'طلبك حالياً قيد المراجعة من قبل فريق لازورد.',
     'تم تأكيد الدفع': 'تم تأكيد استلام مبلغ التحويل البنكي بنجاح.',
@@ -265,11 +276,11 @@ export function buildOwnerStatusWhatsAppUrl(
     `تحديث حالة طلبك رقم ${order.orderNumber}:`,
     `الحالة الحالية: ${order.status}`,
     statusDetails[order.status],
-    `رقم التتبع الخاص بك: ${order.trackingNumber}`,
+    ...(order.trackingNumber ? [`رقم التتبع الخاص بك: ${order.trackingNumber}`] : []),
     `إجمالي الطلب: ${formatOmr(order.finalTotal)}`,
   ].join('\n');
 
-  return `https://wa.me/${target}?text=${safeEncodeWhatsAppText(message)}`;
+  return buildWhatsAppUrl(customerPhone, message);
 }
 
 export interface CheckoutValidationInput {
