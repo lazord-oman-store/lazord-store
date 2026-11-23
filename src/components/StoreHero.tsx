@@ -47,14 +47,14 @@ export function StoreHero({ brandBio, onExploreCatalog }: StoreHeroProps) {
 
           {/* Showcase Image Column */}
           <div className="lg:col-span-6">
-            <div className="relative h-full min-h-[280px] sm:min-h-[380px] lg:min-h-[440px] rounded-xl overflow-hidden border border-[#2D2923] bg-[#1E1C19]">
+            <div className="relative aspect-[16/10] sm:aspect-video lg:aspect-auto lg:h-full lg:min-h-[440px] rounded-xl overflow-hidden border border-[#2D2923] bg-[#1E1C19]">
               {!imgError ? (
                 <img
-                  src="/src/assets/images/hero_lazord_atelier_1795258094371.jpg"
+                  src="/src/assets/images/hero_lazord_branded_v3_1795392542858.jpg"
                   alt="زجاجة عطر لازورد الفاخرة مع مبخرة العود على الحجر الداكن"
                   referrerPolicy="no-referrer"
                   onError={() => setImgError(true)}
-                  className="w-full h-full lg:h-full object-cover object-center"
+                  className="w-full h-full object-cover object-center"
                 />
               ) : (
                 <div className="w-full h-full flex flex-col items-center justify-center p-8 text-center bg-gradient-to-br from-[#1F1C17] to-[#141311]">
@@ -74,13 +74,13 @@ export function StoreHero({ brandBio, onExploreCatalog }: StoreHeroProps) {
           <div>
             <h2 className="text-base font-semibold text-[#D4B774]">خلاصات عطرية نادرة</h2>
             <p className="mt-1.5 text-sm text-[#CFC7B8] leading-relaxed">
-              تركيبات مركّزة من دهن العود الكمبودي واللبان والزعفران بثبات يدوم طويلاً.
+              نوتات و زيوت عطيه مختاره بعنايه شديده لتنال على إعجابكم لتجعل من العطر ذات فوحان عالٍ وثبات يدوم طويلاً
             </p>
           </div>
           <div>
             <h2 className="text-base font-semibold text-[#D4B774]">بخور معتّق يدوياً</h2>
             <p className="mt-1.5 text-sm text-[#CFC7B8] leading-relaxed">
-              رقائق عود ومعمول فاخر مشبع بأرقى الزيوت الشرقية للمناسبات والمجالس.
+              بخور فاخر مشبع بأرقى الزيوت الشرقية للمناسبات والمجالس.
             </p>
           </div>
           <div>

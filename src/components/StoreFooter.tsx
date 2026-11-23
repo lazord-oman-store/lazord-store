@@ -1,6 +1,6 @@
 import { useRef } from 'react';
 import { Instagram } from 'lucide-react';
-import { LAZORD_INSTAGRAM_URL, LAZORD_WHATSAPP_MESSAGE_LINK } from '../lib/storeLogic';
+import { LAZORD_INSTAGRAM_URL } from '../lib/storeLogic';
 import type { StoreSettings } from '../types/store';
 import { BrandLogo } from './BrandLogo';
 import { WhatsAppIcon } from './WhatsAppIcon';
@@ -47,16 +47,13 @@ export function StoreFooter({ settings, onSecretAdminTrigger }: StoreFooterProps
           <div className="md:col-span-6 flex flex-col md:items-end justify-center gap-3">
             <p className="text-sm font-medium text-[#FAF8F4]">خدمة العملاء والاستفسارات</p>
             <div className="flex flex-wrap items-center gap-3">
-              <a
-                href={LAZORD_WHATSAPP_MESSAGE_LINK}
-                target="_blank"
-                rel="noopener noreferrer"
-                data-testid="footer-whatsapp-btn"
-                className="inline-flex items-center gap-2 px-4 py-2.5 min-h-[44px] rounded-lg border border-[#3A342B] bg-[#1E1C19] hover:border-[#B59449] text-sm text-[#FAF8F4] transition-colors whitespace-nowrap"
+              <div
+                data-testid="footer-whatsapp-info"
+                className="inline-flex items-center gap-2 px-4 py-2.5 min-h-[44px] rounded-lg border border-[#3A342B] bg-[#1E1C19] text-sm text-[#FAF8F4] whitespace-nowrap select-text"
               >
                 <WhatsAppIcon className="w-4 h-4 text-[#B59449] shrink-0" />
-                <span>تواصل معنا عبر واتساب</span>
-              </a>
+                <span>تواصل معنا عبر الواتساب على الرقم 79115527</span>
+              </div>
 
               <a
                 href={LAZORD_INSTAGRAM_URL}

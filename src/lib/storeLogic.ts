@@ -2,6 +2,7 @@ import type {
   CartItem,
   Order,
   OrderStatus,
+  Product,
   ProductCategory,
   PromoCode,
   StoreAnalytics,
@@ -40,6 +41,12 @@ export function formatOmr(value: number): string {
 
 export function getCategoryLabelAr(category: ProductCategory): string {
   return category === 'perfume' ? 'عطور' : 'بخور';
+}
+
+export function isProductOutOfStock(
+  product: Pick<Product, 'outOfStock'> | null | undefined
+): boolean {
+  return Boolean(product?.outOfStock);
 }
 
 /**

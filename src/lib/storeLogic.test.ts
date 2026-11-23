@@ -12,6 +12,7 @@ import {
   formatOmr,
   generateNextOrderNumber,
   generateUniqueTrackingNumber,
+  isProductOutOfStock,
   sanitizeWhatsAppDigits,
   validateCheckoutInput,
 } from './storeLogic';
@@ -316,3 +317,12 @@ test('validateCheckoutInput requires receipt image, Oman governorate, and valid 
   });
   assert.equal(valid, null);
 });
+
+test('isProductOutOfStock handles missing, false, and true states safely', () => {
+  assert.equal(isProductOutOfStock(undefined), false);
+  assert.equal(isProductOutOfStock(null), false);
+  assert.equal(isProductOutOfStock({}), false);
+  assert.equal(isProductOutOfStock({ outOfStock: false }), false);
+  assert.equal(isProductOutOfStock({ outOfStock: true }), true);
+});
+

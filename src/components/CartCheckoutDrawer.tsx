@@ -1,10 +1,11 @@
-import { useMemo, useState, type ChangeEvent, type FormEvent } from 'react';
+import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react';
 import {
   ArrowRight,
   Check,
   CheckCircle2,
   Copy,
   ImagePlus,
+  Info,
   Minus,
   Plus,
   ShoppingBag,
@@ -14,11 +15,11 @@ import {
 import { readImageFileAsUploadDataUrl } from '../lib/imageUpload';
 import {
   BANK_TRANSFER_INSTRUCTION,
-  LAZORD_WHATSAPP_MESSAGE_LINK,
   OMAN_GOVERNORATES,
   ORDER_CONFIRMATION_MESSAGE,
   calculateCartTotals,
   formatCustomerOrderWhatsAppMessage,
+  isProductOutOfStock,
   validateCheckoutInput,
 } from '../lib/storeLogic';
 import { storeRepository } from '../services/storeRepository';
@@ -76,16 +77,37 @@ export function CartCheckoutDrawer({
 
   // Confirmation state
   const [confirmedOrder, setConfirmedOrder] = useState<Order | null>(null);
+  const [showTrackingReminder, setShowTrackingReminder] = useState(false);
 
   const totals = useMemo(
     () => calculateCartTotals(items, appliedPromo),
     [items, appliedPromo]
   );
 
+  const hasOutOfStockItem = useMemo(
+    () => items.some((item) => isProductOutOfStock(item.product)),
+    [items]
+  );
+
   const orderWhatsAppMessage = useMemo(
     () => (confirmedOrder ? formatCustomerOrderWhatsAppMessage(confirmedOrder) : ''),
     [confirmedOrder]
   );
+
+  useEffect(() => {
+    if (!isOpen || step !== 'confirmation' || !confirmedOrder) {
+      setShowTrackingReminder(false);
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setShowTrackingReminder(true);
+    }, 1000);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [isOpen, step, confirmedOrder]);
 
   if (!isOpen) return null;
 
@@ -111,7 +133,6 @@ export function CartCheckoutDrawer({
   };
 
   const copyTextReliable = (value: string, onDone?: () => void): void => {
-    // Run synchronous fallback immediately so clipboard is populated before target="_blank" switches focus
     const syncCopied = fallbackCopyToClipboard(value);
     if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
       navigator.clipboard
@@ -191,6 +212,10 @@ export function CartCheckoutDrawer({
 
   const handleSubmitOrder = async (e: FormEvent) => {
     e.preventDefault();
+    if (hasOutOfStockItem) {
+      setCheckoutError('عذراً، يحتوي طلبك على منتج نفذت كميته حالياً. يرجى إزالته أولاً.');
+      return;
+    }
     const validationError = validateCheckoutInput({
       customerName,
       customerPhone,
@@ -217,6 +242,7 @@ export function CartCheckoutDrawer({
         receiptImageUrl,
       });
 
+      setShowTrackingReminder(false);
       setConfirmedOrder(created);
       onClearCart();
       setAppliedPromo(null);
@@ -237,6 +263,7 @@ export function CartCheckoutDrawer({
   };
 
   const handleDrawerClose = () => {
+    setShowTrackingReminder(false);
     if (step === 'confirmation') {
       setStep('cart');
       setConfirmedOrder(null);
@@ -253,7 +280,7 @@ export function CartCheckoutDrawer({
       aria-labelledby="cart-drawer-title"
       className="fixed inset-0 z-50 flex justify-end bg-black/55 backdrop-blur-xs"
     >
-      <div className="w-full max-w-lg bg-[#FAF8F4] h-full shadow-2xl flex flex-col border-s border-[#DFD6C3]">
+      <div className="relative w-full max-w-lg bg-[#FAF8F4] h-full shadow-2xl flex flex-col border-s border-[#DFD6C3]">
         {/* Drawer Header */}
         <div className="px-6 py-4 bg-[#141311] text-[#FAF8F4] flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
@@ -301,11 +328,24 @@ export function CartCheckoutDrawer({
               ) : (
                 <>
                   {/* Items List */}
+                  {hasOutOfStockItem && (
+                    <div
+                      role="alert"
+                      className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-xs sm:text-sm font-medium text-red-800"
+                    >
+                      يوجد منتج في سلتك «نفذت الكميه» حالياً. يرجى إزالته لتتمكن من إتمام الطلب.
+                    </div>
+                  )}
+
                   <ul className="space-y-3">
-                    {items.map((item) => (
+                    {items.map((item) => {
+                      const itemOutOfStock = isProductOutOfStock(item.product);
+                      return (
                       <li
                         key={item.product.id}
-                        className="bg-white border border-[#E7E0D2] rounded-xl p-4 flex gap-4 items-center"
+                        className={`bg-white border rounded-xl p-4 flex gap-4 items-center ${
+                          itemOutOfStock ? 'border-red-300 bg-red-50/40' : 'border-[#E7E0D2]'
+                        }`}
                       >
                         <img
                           src={item.product.imageUrl}
@@ -318,6 +358,9 @@ export function CartCheckoutDrawer({
                             {item.product.nameAr}
                           </h3>
                           <p className="text-xs text-[#615B52] mt-0.5">{item.product.sizeLabel}</p>
+                          {itemOutOfStock && (
+                            <p className="text-xs font-bold text-red-700 mt-1">نفذت الكميه</p>
+                          )}
                           <p className="text-sm font-semibold text-[#8E6F2D] mt-1">
                             <OmrPrice amount={item.product.priceOmr * item.quantity} />
                           </p>
@@ -356,7 +399,8 @@ export function CartCheckoutDrawer({
                           </div>
                         </div>
                       </li>
-                    ))}
+                      );
+                    })}
                   </ul>
 
                   {/* Promo Code Section */}
@@ -374,7 +418,7 @@ export function CartCheckoutDrawer({
                         dir="ltr"
                         value={promoInput}
                         onChange={(e) => setPromoInput(e.target.value)}
-                        placeholder="LAZORD15"
+                        placeholder=""
                         className="flex-1 px-3.5 py-2 min-h-[42px] bg-[#FAF8F4] border border-[#D7CCB8] rounded-lg text-sm font-mono uppercase text-[#181715] focus:outline-none focus:border-[#8E6F2D]"
                       />
                       {appliedPromo ? (
@@ -686,24 +730,13 @@ export function CartCheckoutDrawer({
               </div>
 
               <div className="space-y-3 pt-2">
-                <a
-                  href={LAZORD_WHATSAPP_MESSAGE_LINK}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  data-testid="confirm-whatsapp-btn"
-                  onClick={() => {
-                    if (orderWhatsAppMessage) {
-                      copyTextReliable(orderWhatsAppMessage, () => {
-                        setCopiedOrderMessage(true);
-                        setWhatsappCopyNotice(true);
-                      });
-                    }
-                  }}
-                  className="w-full inline-flex items-center justify-center gap-2 px-5 py-3.5 min-h-[48px] bg-[#15803D] hover:bg-[#166534] text-white text-sm sm:text-base font-bold rounded-lg transition-colors shadow-sm"
+                <div
+                  data-testid="confirm-whatsapp-info"
+                  className="w-full inline-flex items-center justify-center gap-2 px-5 py-3.5 min-h-[48px] bg-[#15803D] text-white text-sm sm:text-base font-bold rounded-lg shadow-sm text-center select-text"
                 >
                   <WhatsAppIcon className="w-4 h-4 shrink-0" />
-                  <span>إرسال تفاصيل الطلب على واتساب المتجر</span>
-                </a>
+                  <span>قم بنسخ تفاصيل طلبك وارسلها عبر الرقم 79115527</span>
+                </div>
 
                 {whatsappCopyNotice && (
                   <div
@@ -753,7 +786,7 @@ export function CartCheckoutDrawer({
                 </div>
 
                 <p className="text-xs text-center text-[#615B52]">
-                  عند الضغط على زر واتساب المتجر يتم نسخ نص الطلب تلقائياً وفتح المحادثة مباشرة لتقوم بلصق الرسالة وإرسالها.
+                  انسخ تفاصيل الطلب من الزر أعلاه وأرسلها عبر الواتساب إلى الرقم 79115527.
                 </p>
 
                 <button
@@ -777,11 +810,12 @@ export function CartCheckoutDrawer({
           <div className="p-6 bg-white border-t border-[#E7E0D2] shrink-0">
             <button
               type="button"
+              disabled={hasOutOfStockItem}
               onClick={() => {
                 setCheckoutError(null);
                 setStep('checkout');
               }}
-              className="w-full py-3.5 px-6 min-h-[46px] bg-[#141311] hover:bg-[#8E6F2D] text-[#FAF8F4] text-sm sm:text-base font-semibold rounded-lg transition-colors cursor-pointer"
+              className="w-full py-3.5 px-6 min-h-[46px] bg-[#141311] hover:bg-[#8E6F2D] disabled:opacity-50 disabled:cursor-not-allowed text-[#FAF8F4] text-sm sm:text-base font-semibold rounded-lg transition-colors cursor-pointer"
             >
               إتمام الطلب والدفع بالتحويل البنكي
             </button>
@@ -793,11 +827,48 @@ export function CartCheckoutDrawer({
             <button
               type="submit"
               form="checkout-form"
-              disabled={submittingOrder || uploadingReceipt}
-              className="w-full py-3.5 px-6 min-h-[46px] bg-[#B59449] hover:bg-[#9E7E38] disabled:opacity-60 text-[#141311] text-sm sm:text-base font-bold rounded-lg transition-colors cursor-pointer"
+              disabled={submittingOrder || uploadingReceipt || hasOutOfStockItem}
+              className="w-full py-3.5 px-6 min-h-[46px] bg-[#B59449] hover:bg-[#9E7E38] disabled:opacity-60 disabled:cursor-not-allowed text-[#141311] text-sm sm:text-base font-bold rounded-lg transition-colors cursor-pointer"
             >
               {submittingOrder ? 'جاري تأكيد وإرسال الطلب...' : 'تأكيد الطلب وإرسال الإيصال'}
             </button>
+          </div>
+        )}
+
+        {step === 'confirmation' && showTrackingReminder && (
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="tracking-reminder-title"
+            data-testid="tracking-reminder-modal"
+            className="absolute inset-0 z-20 flex items-center justify-center p-5 bg-black/55 backdrop-blur-[2px]"
+          >
+            <div className="w-full max-w-sm bg-[#FAF8F4] border border-[#D7CCB8] rounded-2xl shadow-2xl p-6 text-center space-y-4">
+              <div className="w-12 h-12 mx-auto rounded-full bg-[#EFE9DC] border border-[#D7CCB8] flex items-center justify-center">
+                <Info className="w-6 h-6 text-[#8E6F2D]" aria-hidden="true" />
+              </div>
+
+              <div className="space-y-2">
+                <h3
+                  id="tracking-reminder-title"
+                  className="font-editorial text-lg font-bold text-[#181715]"
+                >
+                  تذكير بنسخ رقم التتبع
+                </h3>
+                <p className="text-sm leading-relaxed text-[#4F4A42]">
+                  يرجى نسخ رقم التتبع الخاص بطلبك لتتمكن من معرفة حالة طلبك ومتابعته في أي وقت.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                data-testid="tracking-reminder-ok-btn"
+                onClick={() => setShowTrackingReminder(false)}
+                className="w-full py-3 px-5 min-h-[44px] bg-[#141311] hover:bg-[#8E6F2D] text-[#FAF8F4] text-sm font-bold rounded-lg transition-colors cursor-pointer"
+              >
+                حسناً
+              </button>
+            </div>
           </div>
         )}
       </div>

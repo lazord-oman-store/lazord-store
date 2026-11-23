@@ -1,6 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { CheckCircle2, Clock, PackageCheck, Search, Truck, X, XCircle } from 'lucide-react';
-import { LAZORD_WHATSAPP_MESSAGE_LINK } from '../lib/storeLogic';
 import { storeRepository } from '../services/storeRepository';
 import type { OrderStatus, PublicOrderTracking } from '../types/store';
 import { OmrPrice } from './OmrPrice';
@@ -181,16 +180,13 @@ export function TrackOrderModal({
                   <p>
                     تم رفض الطلب أو تعذر تأكيد إيصال التحويل البنكي. يرجى التواصل مع خدمة العملاء عبر واتساب للمراجعة.
                   </p>
-                  <a
-                    href={LAZORD_WHATSAPP_MESSAGE_LINK}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    data-testid="track-rejected-whatsapp-btn"
-                    className="inline-flex items-center gap-2 px-4 py-2 min-h-[40px] rounded-lg bg-[#141311] hover:bg-[#8E6F2D] text-[#FAF8F4] text-xs font-semibold transition-colors whitespace-nowrap"
+                  <div
+                    data-testid="track-rejected-whatsapp-info"
+                    className="inline-flex items-center gap-2 px-4 py-2 min-h-[40px] rounded-lg bg-[#141311] text-[#FAF8F4] text-xs font-semibold whitespace-nowrap select-text"
                   >
                     <WhatsAppIcon className="w-4 h-4 text-[#B59449] shrink-0" />
-                    <span>تواصل معنا عبر واتساب</span>
-                  </a>
+                    <span>تواصل معنا عبر الواتساب على الرقم 79115527</span>
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-2">

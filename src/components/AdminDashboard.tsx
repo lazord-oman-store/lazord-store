@@ -92,6 +92,7 @@ export function AdminDashboard({
   const [prodSize, setProdSize] = useState('');
   const [prodPrice, setProdPrice] = useState('');
   const [prodImage, setProdImage] = useState('');
+  const [prodOutOfStock, setProdOutOfStock] = useState(false);
   const [savingProduct, setSavingProduct] = useState(false);
 
   // Promo form state
@@ -257,6 +258,7 @@ export function AdminDashboard({
     setProdSize('');
     setProdPrice('');
     setProdImage('');
+    setProdOutOfStock(false);
   };
 
   const startEditProduct = (product: Product) => {
@@ -267,6 +269,7 @@ export function AdminDashboard({
     setProdSize(product.sizeLabel);
     setProdPrice(String(product.priceOmr));
     setProdImage(product.imageUrl);
+    setProdOutOfStock(Boolean(product.outOfStock));
   };
 
   const handleProductImageUpload = async (e: ChangeEvent<HTMLInputElement>) => {
@@ -295,6 +298,7 @@ export function AdminDashboard({
           sizeLabel: prodSize,
           priceOmr: priceNum,
           imageUrl: prodImage,
+          outOfStock: prodOutOfStock,
         });
         setData((prev) =>
           prev
@@ -313,6 +317,7 @@ export function AdminDashboard({
           sizeLabel: prodSize || (prodCategory === 'perfume' ? '100 مل · Eau de Parfum' : '60 جم'),
           priceOmr: priceNum,
           imageUrl: prodImage,
+          outOfStock: prodOutOfStock,
         });
         setData((prev) =>
           prev ? { ...prev, products: [created, ...prev.products] } : prev
@@ -325,6 +330,35 @@ export function AdminDashboard({
       handleAdminError(err, 'تعذر حفظ المنتج.');
     } finally {
       setSavingProduct(false);
+    }
+  };
+
+  const handleToggleProductStock = async (product: Product) => {
+    const nextOutOfStock = !Boolean(product.outOfStock);
+    try {
+      const updated = await storeRepository.updateProduct(product.id, {
+        outOfStock: nextOutOfStock,
+      });
+      setData((prev) =>
+        prev
+          ? {
+              ...prev,
+              products: prev.products.map((p) => (p.id === updated.id ? updated : p)),
+            }
+          : prev
+      );
+      if (editingProduct?.id === updated.id) {
+        setEditingProduct(updated);
+        setProdOutOfStock(Boolean(updated.outOfStock));
+      }
+      onStorefrontUpdated();
+      showToast(
+        nextOutOfStock
+          ? `تم تحديد "${updated.nameAr}" كـ نفذت الكميه.`
+          : `تمت إعادة "${updated.nameAr}" إلى متوفر.`
+      );
+    } catch (err) {
+      handleAdminError(err, 'تعذر تحديث حالة توفر المنتج.');
     }
   };
 
@@ -995,6 +1029,27 @@ export function AdminDashboard({
                     )}
                   </div>
 
+                  <div>
+                    <label htmlFor="prod-stock-status" className="block text-xs font-medium text-[#4F4A42] mb-1">
+                      حالة التوفر في المتجر
+                    </label>
+                    <select
+                      id="prod-stock-status"
+                      data-testid="prod-stock-status-select"
+                      value={prodOutOfStock ? 'out_of_stock' : 'available'}
+                      onChange={(e) => setProdOutOfStock(e.target.value === 'out_of_stock')}
+                      className="w-full px-3 py-2 min-h-[42px] bg-[#FAF8F4] border border-[#D7CCB8] rounded-lg text-sm font-medium text-[#181715]"
+                    >
+                      <option value="available">متوفر</option>
+                      <option value="out_of_stock">نفذت الكميه</option>
+                    </select>
+                    {prodOutOfStock && (
+                      <p className="mt-1.5 text-xs text-amber-800">
+                        سيظهر هذا المنتج للزبائن بحالة «نفذت الكميه» ولن يتمكنوا من إضافته للسلة.
+                      </p>
+                    )}
+                  </div>
+
                   <button
                     type="submit"
                     disabled={savingProduct}
@@ -1012,50 +1067,78 @@ export function AdminDashboard({
                 </form>
 
                 <div className="lg:col-span-7 space-y-3">
-                  {data.products.map((product) => (
-                    <div
-                      key={product.id}
-                      className="bg-white border border-[#E7E0D2] rounded-xl p-4 flex items-center justify-between gap-4"
-                    >
-                      <div className="flex items-center gap-3.5 min-w-0">
-                        <img
-                          src={product.imageUrl}
-                          alt={product.nameAr}
-                          className="w-16 h-16 rounded-lg object-cover bg-[#F2EDE3] shrink-0"
-                        />
-                        <div className="min-w-0">
-                          <p className="text-xs text-[#8E6F2D] font-medium">
-                            {getCategoryLabelAr(product.category)} · {product.sizeLabel}
-                          </p>
-                          <h3 className="text-sm sm:text-base font-semibold text-[#181715] truncate">
-                            {product.nameAr}
-                          </h3>
-                          <p className="text-sm font-bold text-[#181715]">
-                            <OmrPrice amount={product.priceOmr} />
-                          </p>
+                  {data.products.map((product) => {
+                    const outOfStock = Boolean(product.outOfStock);
+                    return (
+                      <div
+                        key={product.id}
+                        data-testid={`admin-product-${product.id}`}
+                        className="bg-white border border-[#E7E0D2] rounded-xl p-4 flex flex-wrap sm:flex-nowrap items-center justify-between gap-4"
+                      >
+                        <div className="flex items-center gap-3.5 min-w-0">
+                          <img
+                            src={product.imageUrl}
+                            alt={product.nameAr}
+                            className={`w-16 h-16 rounded-lg object-cover bg-[#F2EDE3] shrink-0 ${
+                              outOfStock ? 'opacity-65 grayscale-[30%]' : ''
+                            }`}
+                          />
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="text-xs text-[#8E6F2D] font-medium">
+                                {getCategoryLabelAr(product.category)} · {product.sizeLabel}
+                              </p>
+                              {outOfStock && (
+                                <span
+                                  data-testid={`admin-out-of-stock-badge-${product.id}`}
+                                  className="px-2 py-0.5 text-[11px] font-bold rounded bg-red-50 border border-red-200 text-red-700"
+                                >
+                                  نفذت الكميه
+                                </span>
+                              )}
+                            </div>
+                            <h3 className="text-sm sm:text-base font-semibold text-[#181715] truncate">
+                              {product.nameAr}
+                            </h3>
+                            <p className="text-sm font-bold text-[#181715]">
+                              <OmrPrice amount={product.priceOmr} />
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => handleToggleProductStock(product)}
+                            data-testid={`toggle-stock-${product.id}`}
+                            className={`px-3 py-2 min-h-[38px] text-xs font-semibold rounded-lg border transition-colors whitespace-nowrap cursor-pointer ${
+                              outOfStock
+                                ? 'bg-emerald-50 border-emerald-300 hover:bg-emerald-100 text-emerald-800'
+                                : 'bg-amber-50 border-amber-300 hover:bg-amber-100 text-amber-900'
+                            }`}
+                          >
+                            {outOfStock ? 'إرجاع كـ متوفر' : 'تحديد: نفذت الكميه'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => startEditProduct(product)}
+                            aria-label={`تعديل ${product.nameAr}`}
+                            className="p-2.5 rounded-lg border border-[#DFD6C3] hover:bg-[#F2EDE3] text-[#181715] cursor-pointer"
+                          >
+                            <Edit3 className="w-4 h-4" aria-hidden="true" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteProduct(product)}
+                            aria-label={`حذف ${product.nameAr}`}
+                            className="p-2.5 rounded-lg border border-red-200 hover:bg-red-50 text-red-700 cursor-pointer"
+                          >
+                            <Trash2 className="w-4 h-4" aria-hidden="true" />
+                          </button>
                         </div>
                       </div>
-
-                      <div className="flex items-center gap-2 shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => startEditProduct(product)}
-                          aria-label={`تعديل ${product.nameAr}`}
-                          className="p-2.5 rounded-lg border border-[#DFD6C3] hover:bg-[#F2EDE3] text-[#181715] cursor-pointer"
-                        >
-                          <Edit3 className="w-4 h-4" aria-hidden="true" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteProduct(product)}
-                          aria-label={`حذف ${product.nameAr}`}
-                          className="p-2.5 rounded-lg border border-red-200 hover:bg-red-50 text-red-700 cursor-pointer"
-                        >
-                          <Trash2 className="w-4 h-4" aria-hidden="true" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </section>
             )}

@@ -8,6 +8,7 @@ import { StoreHeader } from './components/StoreHeader';
 import { StoreHero } from './components/StoreHero';
 import { TrackOrderModal } from './components/TrackOrderModal';
 import { INITIAL_SEED_STATE } from './lib/seedData';
+import { isProductOutOfStock } from './lib/storeLogic';
 import { storeRepository } from './services/storeRepository';
 import type { CartItem, Product, StoreSettings } from './types/store';
 
@@ -44,6 +45,14 @@ export default function App() {
       const data = await storeRepository.getStorefront();
       setProducts(data.products);
       setSettings(data.settings);
+      setCartItems((prev) =>
+        prev
+          .map((item) => {
+            const latest = data.products.find((p) => p.id === item.product.id);
+            return latest ? { ...item, product: latest } : null;
+          })
+          .filter((item): item is CartItem => item !== null)
+      );
     } catch {
       // Keep initial seed fallback if transient error
     } finally {
@@ -103,6 +112,9 @@ export default function App() {
   );
 
   const handleAddToCart = (product: Product) => {
+    if (isProductOutOfStock(product)) {
+      return;
+    }
     setCartItems((prev) => {
       const existing = prev.find((i) => i.product.id === product.id);
       if (existing) {

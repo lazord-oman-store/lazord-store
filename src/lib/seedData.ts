@@ -29,6 +29,7 @@ export const INITIAL_SEED_STATE: PersistedStoreState = {
       priceOmr: 34.0,
       imageUrl: '/src/assets/images/perfume_royal_oud_1795258094810.jpg',
       featured: true,
+      outOfStock: false,
       createdAt: '2026-10-12T09:00:00.000Z',
     },
     {
@@ -40,6 +41,7 @@ export const INITIAL_SEED_STATE: PersistedStoreState = {
       priceOmr: 28.5,
       imageUrl: '/src/assets/images/perfume_amber_velvet_1795258095576.jpg',
       featured: true,
+      outOfStock: false,
       createdAt: '2026-10-14T09:00:00.000Z',
     },
     {
@@ -51,6 +53,7 @@ export const INITIAL_SEED_STATE: PersistedStoreState = {
       priceOmr: 24.0,
       imageUrl: '/src/assets/images/perfume_musk_saffron_1795258094847.jpg',
       featured: false,
+      outOfStock: false,
       createdAt: '2026-10-16T09:00:00.000Z',
     },
     {
@@ -62,6 +65,7 @@ export const INITIAL_SEED_STATE: PersistedStoreState = {
       priceOmr: 18.0,
       imageUrl: '/src/assets/images/bukhoor_royal_charcoal_1795258094434.jpg',
       featured: true,
+      outOfStock: false,
       createdAt: '2026-10-18T09:00:00.000Z',
     },
     {
@@ -73,6 +77,7 @@ export const INITIAL_SEED_STATE: PersistedStoreState = {
       priceOmr: 21.5,
       imageUrl: '/src/assets/images/bukhoor_taif_incense_1795258094152.jpg',
       featured: false,
+      outOfStock: false,
       createdAt: '2026-10-20T09:00:00.000Z',
     },
   ],

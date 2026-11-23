@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Plus, Sparkles } from 'lucide-react';
-import { getCategoryLabelAr } from '../lib/storeLogic';
+import { getCategoryLabelAr, isProductOutOfStock } from '../lib/storeLogic';
 import type { Product } from '../types/store';
 import { OmrPrice } from './OmrPrice';
 
@@ -21,6 +21,7 @@ function ProductCard({
   onAddToCart: (product: Product) => void;
 }) {
   const [imgError, setImgError] = useState(false);
+  const outOfStock = isProductOutOfStock(product);
 
   return (
     <article
@@ -35,12 +36,23 @@ function ProductCard({
             alt={product.nameAr}
             referrerPolicy="no-referrer"
             onError={() => setImgError(true)}
-            className="w-full h-full object-cover object-center transition-transform duration-300 group-hover:scale-[1.03]"
+            className={`w-full h-full object-cover object-center transition-transform duration-300 ${
+              outOfStock ? 'opacity-70 grayscale-[25%]' : 'group-hover:scale-[1.03]'
+            }`}
           />
         ) : (
           <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center bg-gradient-to-br from-[#F2EDE3] to-[#E6DEC9]">
             <Sparkles className="w-8 h-8 text-[#8E6F2D] mb-2" aria-hidden="true" />
             <span className="font-editorial text-lg text-[#181715]">{product.nameAr}</span>
+          </div>
+        )}
+
+        {outOfStock && (
+          <div
+            data-testid={`out-of-stock-badge-${product.id}`}
+            className="absolute top-3 start-3 px-3 py-1 rounded-md bg-[#141311]/90 border border-[#B59449] text-[#FAF8F4] text-xs font-bold shadow-sm"
+          >
+            نفذت الكميه
           </div>
         )}
       </div>
@@ -71,15 +83,27 @@ function ProductCard({
             <OmrPrice amount={product.priceOmr} />
           </div>
 
-          <button
-            type="button"
-            onClick={() => onAddToCart(product)}
-            aria-label={`أضف ${product.nameAr} إلى السلة`}
-            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 min-h-[44px] bg-[#141311] hover:bg-[#8E6F2D] text-[#FAF8F4] text-sm font-medium rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-2 focus-visible:outline-[#8E6F2D]"
-          >
-            <Plus className="w-4 h-4" aria-hidden="true" />
-            <span>أضف إلى السلة</span>
-          </button>
+          {outOfStock ? (
+            <button
+              type="button"
+              disabled
+              aria-disabled="true"
+              data-testid={`out-of-stock-btn-${product.id}`}
+              className="inline-flex items-center justify-center px-4 py-2.5 min-h-[44px] bg-[#EFE9DC] border border-[#D7CCB8] text-[#615B52] text-sm font-semibold rounded-lg whitespace-nowrap shrink-0 cursor-not-allowed"
+            >
+              نفذت الكميه
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => onAddToCart(product)}
+              aria-label={`أضف ${product.nameAr} إلى السلة`}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 min-h-[44px] bg-[#141311] hover:bg-[#8E6F2D] text-[#FAF8F4] text-sm font-medium rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-2 focus-visible:outline-[#8E6F2D]"
+            >
+              <Plus className="w-4 h-4" aria-hidden="true" />
+              <span>أضف إلى السلة</span>
+            </button>
+          )}
         </div>
       </div>
     </article>

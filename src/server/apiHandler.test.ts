@@ -542,4 +542,153 @@ test('Legacy persisted stores strip demo seed orders and fake 128 visit baseline
   }
 });
 
+test('Admin can add/update outOfStock product state with safe fallback and API rejects ordering out-of-stock products', async () => {
+  const prevVercel = process.env.VERCEL;
+  const prevUser = process.env.LAZORD_ADMIN_USERNAME;
+  const prevPass = process.env.LAZORD_ADMIN_PASSWORD;
+
+  try {
+    process.env.VERCEL = '1';
+    process.env.LAZORD_ADMIN_USERNAME = 'owner@lazord.om';
+    process.env.LAZORD_ADMIN_PASSWORD = 'StockPass!2026';
+    resetTestVercelTmpData();
+
+    // Legacy stored product without outOfStock property defaults safely to false
+    const tmpDir = path.join(os.tmpdir(), 'lazord-data');
+    fs.mkdirSync(tmpDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(tmpDir, 'lazord-store.json'),
+      JSON.stringify({
+        totalStoreVisits: 0,
+        seedResetV2: true,
+        orders: [],
+        promoCodes: [],
+        products: [
+          {
+            id: 'prod-legacy-available',
+            nameAr: 'عطر كلاسيك',
+            category: 'perfume',
+            notesAr: 'عود ومسك',
+            sizeLabel: '100 مل',
+            priceOmr: 30,
+            imageUrl: '/src/assets/images/perfume_royal_oud_1795258094810.jpg',
+            createdAt: '2026-10-01T00:00:00.000Z',
+          },
+        ],
+      }),
+      'utf8'
+    );
+
+    const sfBefore = await invokeVercelApi({
+      method: 'GET',
+      url: '/api/index?__apiPath=storefront',
+    });
+    assert.equal(sfBefore.statusCode, 200);
+    const legacyProd = sfBefore.json<{ products: { id: string; outOfStock?: boolean }[] }>().products[0];
+    assert.equal(legacyProd?.id, 'prod-legacy-available');
+    assert.equal(legacyProd?.outOfStock, false);
+
+    // Login as owner
+    const login = await invokeVercelApi({
+      method: 'POST',
+      url: '/api/index?__apiPath=auth/login',
+      body: { username: 'owner@lazord.om', password: 'StockPass!2026' },
+      preParsedBody: true,
+    });
+    const { token } = login.json<{ token: string }>();
+
+    // Create a new perfume marked as outOfStock: true
+    const createdRes = await invokeVercelApi({
+      method: 'POST',
+      url: '/api/index?__apiPath=admin/products',
+      headers: { authorization: `Bearer ${token}` },
+      body: {
+        nameAr: 'عود حصري نادر',
+        category: 'perfume',
+        notesAr: 'دهن عود قديم',
+        sizeLabel: '50 مل',
+        priceOmr: 45,
+        outOfStock: true,
+      },
+      preParsedBody: true,
+    });
+    assert.equal(createdRes.statusCode, 201);
+    const createdProduct = createdRes.json<{ product: { id: string; outOfStock?: boolean } }>().product;
+    assert.equal(createdProduct.outOfStock, true);
+
+    // Public storefront reflects outOfStock: true
+    const sfAfterCreate = await invokeVercelApi({
+      method: 'GET',
+      url: '/api/index?__apiPath=storefront',
+    });
+    const createdInStore = sfAfterCreate
+      .json<{ products: { id: string; outOfStock?: boolean }[] }>()
+      .products.find((p) => p.id === createdProduct.id);
+    assert.equal(createdInStore?.outOfStock, true);
+
+    // Attempting to submit an order containing the out-of-stock product returns 400
+    const blockedOrderRes = await invokeVercelApi({
+      method: 'POST',
+      url: '/api/index?__apiPath=orders',
+      body: {
+        customerName: 'سالم البلوشي',
+        customerPhone: '91234567',
+        city: 'محافظة مسقط',
+        address: 'بوشر',
+        items: [{ productId: createdProduct.id, quantity: 1 }],
+        receiptImageUrl: 'data:image/png;base64,iVBORw0KGgo=',
+      },
+      preParsedBody: true,
+    });
+    assert.equal(blockedOrderRes.statusCode, 400);
+    assert.ok(blockedOrderRes.json<{ error: string }>().error.includes('نفذت كميته'));
+
+    // Toggle legacy product to outOfStock via PUT then back to available
+    const putOutRes = await invokeVercelApi({
+      method: 'PUT',
+      url: `/api/index?__apiPath=admin/products/prod-legacy-available`,
+      headers: { authorization: `Bearer ${token}` },
+      body: { outOfStock: true },
+      preParsedBody: true,
+    });
+    assert.equal(putOutRes.statusCode, 200);
+    assert.equal(putOutRes.json<{ product: { outOfStock?: boolean } }>().product.outOfStock, true);
+
+    const putBackRes = await invokeVercelApi({
+      method: 'PUT',
+      url: `/api/index?__apiPath=admin/products/prod-legacy-available`,
+      headers: { authorization: `Bearer ${token}` },
+      body: { outOfStock: false },
+      preParsedBody: true,
+    });
+    assert.equal(putBackRes.statusCode, 200);
+    assert.equal(putBackRes.json<{ product: { outOfStock?: boolean } }>().product.outOfStock, false);
+
+    // Available product can still be ordered normally
+    const okOrderRes = await invokeVercelApi({
+      method: 'POST',
+      url: '/api/index?__apiPath=orders',
+      body: {
+        customerName: 'سالم البلوشي',
+        customerPhone: '91234567',
+        city: 'محافظة مسقط',
+        address: 'بوشر',
+        items: [{ productId: 'prod-legacy-available', quantity: 1 }],
+        receiptImageUrl: 'data:image/png;base64,iVBORw0KGgo=',
+      },
+      preParsedBody: true,
+    });
+    assert.equal(okOrderRes.statusCode, 201);
+  } finally {
+    resetTestVercelTmpData();
+    if (prevVercel === undefined) delete process.env.VERCEL;
+    else process.env.VERCEL = prevVercel;
+    if (prevUser === undefined) delete process.env.LAZORD_ADMIN_USERNAME;
+    else process.env.LAZORD_ADMIN_USERNAME = prevUser;
+    if (prevPass === undefined) delete process.env.LAZORD_ADMIN_PASSWORD;
+    else process.env.LAZORD_ADMIN_PASSWORD = prevPass;
+  }
+});
+
+
 

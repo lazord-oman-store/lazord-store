@@ -25,6 +25,7 @@ interface Product {
   priceOmr: number;
   imageUrl: string;
   featured?: boolean;
+  outOfStock?: boolean;
   createdAt: string;
 }
 
@@ -148,6 +149,7 @@ const INITIAL_SEED_STATE: PersistedStoreState = {
       priceOmr: 34.0,
       imageUrl: '/src/assets/images/perfume_royal_oud_1795258094810.jpg',
       featured: true,
+      outOfStock: false,
       createdAt: '2026-10-12T09:00:00.000Z',
     },
     {
@@ -159,6 +161,7 @@ const INITIAL_SEED_STATE: PersistedStoreState = {
       priceOmr: 28.5,
       imageUrl: '/src/assets/images/perfume_amber_velvet_1795258095576.jpg',
       featured: true,
+      outOfStock: false,
       createdAt: '2026-10-14T09:00:00.000Z',
     },
     {
@@ -170,6 +173,7 @@ const INITIAL_SEED_STATE: PersistedStoreState = {
       priceOmr: 24.0,
       imageUrl: '/src/assets/images/perfume_musk_saffron_1795258094847.jpg',
       featured: false,
+      outOfStock: false,
       createdAt: '2026-10-16T09:00:00.000Z',
     },
     {
@@ -181,6 +185,7 @@ const INITIAL_SEED_STATE: PersistedStoreState = {
       priceOmr: 18.0,
       imageUrl: '/src/assets/images/bukhoor_royal_charcoal_1795258094434.jpg',
       featured: true,
+      outOfStock: false,
       createdAt: '2026-10-18T09:00:00.000Z',
     },
     {
@@ -192,6 +197,7 @@ const INITIAL_SEED_STATE: PersistedStoreState = {
       priceOmr: 21.5,
       imageUrl: '/src/assets/images/bukhoor_taif_incense_1795258094152.jpg',
       featured: false,
+      outOfStock: false,
       createdAt: '2026-10-20T09:00:00.000Z',
     },
   ],
@@ -311,8 +317,17 @@ function normalizeStoreState(raw: unknown): PersistedStoreState {
   if (loadedSettings.whatsappNumber === '96892481750') {
     loadedSettings.whatsappNumber = '96879115527';
   }
+  const normalizedProducts: Product[] = Array.isArray(parsed.products)
+    ? parsed.products
+        .filter((item): item is Product => Boolean(item && typeof item === 'object'))
+        .map((item) => ({
+          ...item,
+          outOfStock: item.outOfStock === true,
+        }))
+    : seed.products;
+
   return {
-    products: Array.isArray(parsed.products) ? parsed.products : seed.products,
+    products: normalizedProducts,
     orders: Array.isArray(parsed.orders) ? parsed.orders : seed.orders,
     promoCodes: Array.isArray(parsed.promoCodes) ? parsed.promoCodes : seed.promoCodes,
     settings: loadedSettings,
@@ -1069,6 +1084,12 @@ export default async function handler(
         const product = state.products.find((p) => p.id === entry.productId);
         const qty = Math.max(0, Math.floor(Number(entry.quantity) || 0));
         if (!product || qty <= 0) continue;
+        if (product.outOfStock === true) {
+          sendJson(res, 400, {
+            error: `عذراً، المنتج "${product.nameAr}" نفذت كميته حالياً ولا يمكن إتمام طلبه.`,
+          });
+          return;
+        }
         cartPairs.push({ product, quantity: qty });
         orderItems.push({
           productId: product.id,
@@ -1372,6 +1393,7 @@ export default async function handler(
               ? '/src/assets/images/perfume_royal_oud_1795258094810.jpg'
               : '/src/assets/images/bukhoor_royal_charcoal_1795258094434.jpg'),
           featured: Boolean(body.featured),
+          outOfStock: body.outOfStock === true,
           createdAt: new Date().toISOString(),
         };
 
@@ -1418,6 +1440,10 @@ export default async function handler(
               body.imageUrl !== undefined
                 ? body.imageUrl.trim() || existing.imageUrl
                 : existing.imageUrl,
+            outOfStock:
+              body.outOfStock !== undefined
+                ? body.outOfStock === true
+                : existing.outOfStock === true,
           };
 
           state.products[index] = updated;

@@ -26,6 +26,7 @@ export interface Product {
   priceOmr: number;
   imageUrl: string;
   featured?: boolean;
+  outOfStock?: boolean;
   createdAt: string;
 }
 
