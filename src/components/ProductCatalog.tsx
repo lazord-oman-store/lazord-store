@@ -1,8 +1,8 @@
-import { useState } from 'react';
-import { Plus, Sparkles } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { getCategoryLabelAr, isProductOutOfStock } from '../lib/storeLogic';
 import type { Product } from '../types/store';
 import { OmrPrice } from './OmrPrice';
+import { SafeStoreImage } from './SafeStoreImage';
 
 export type CatalogFilter = 'all' | 'perfume' | 'bukhoor';
 
@@ -20,7 +20,6 @@ function ProductCard({
   product: Product;
   onAddToCart: (product: Product) => void;
 }) {
-  const [imgError, setImgError] = useState(false);
   const outOfStock = isProductOutOfStock(product);
 
   return (
@@ -30,22 +29,16 @@ function ProductCard({
     >
       {/* 4:3 Neutral Studio Pedestal Media */}
       <div className="relative aspect-[4/3] w-full bg-[#F2EDE3] overflow-hidden">
-        {!imgError && product.imageUrl ? (
-          <img
-            src={product.imageUrl}
-            alt={product.nameAr}
-            referrerPolicy="no-referrer"
-            onError={() => setImgError(true)}
-            className={`w-full h-full object-cover object-center transition-transform duration-300 ${
-              outOfStock ? 'opacity-70 grayscale-[25%]' : 'group-hover:scale-[1.03]'
-            }`}
-          />
-        ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center bg-gradient-to-br from-[#F2EDE3] to-[#E6DEC9]">
-            <Sparkles className="w-8 h-8 text-[#8E6F2D] mb-2" aria-hidden="true" />
-            <span className="font-editorial text-lg text-[#181715]">{product.nameAr}</span>
-          </div>
-        )}
+        <SafeStoreImage
+          src={product.imageUrl}
+          alt={product.nameAr}
+          fallbackLabel={product.nameAr}
+          iconClassName="w-8 h-8"
+          fallbackClassName="w-full h-full p-6"
+          className={`w-full h-full object-cover object-center transition-transform duration-300 ${
+            outOfStock ? 'opacity-70 grayscale-[25%]' : 'group-hover:scale-[1.03]'
+          }`}
+        />
 
         {outOfStock && (
           <div

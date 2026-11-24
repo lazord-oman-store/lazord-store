@@ -33,6 +33,7 @@ import {
 import { storeRepository, UnauthorizedError } from '../services/storeRepository';
 import { BrandLogo } from './BrandLogo';
 import { OmrPrice } from './OmrPrice';
+import { SafeStoreImage } from './SafeStoreImage';
 import {
   ORDER_STATUS_LIST,
   type AdminDashboardData,
@@ -1095,9 +1096,11 @@ export function AdminDashboard({
                       </p>
                     )}
                     {prodImage && (
-                      <img
+                      <SafeStoreImage
                         src={prodImage}
                         alt="معاينة صورة المنتج"
+                        fallbackClassName="mt-2 h-28 w-full rounded-lg border border-[#E7E0D2]"
+                        fallbackLabel="تعذر عرض معاينة الصورة"
                         className="mt-2 h-28 w-full object-cover rounded-lg border border-[#E7E0D2]"
                       />
                     )}
@@ -1152,9 +1155,10 @@ export function AdminDashboard({
                         className="bg-white border border-[#E7E0D2] rounded-xl p-4 flex flex-wrap sm:flex-nowrap items-center justify-between gap-4"
                       >
                         <div className="flex items-center gap-3.5 min-w-0">
-                          <img
+                          <SafeStoreImage
                             src={product.imageUrl}
                             alt={product.nameAr}
+                            iconClassName="w-5 h-5"
                             className={`w-16 h-16 rounded-lg object-cover bg-[#F2EDE3] shrink-0 ${
                               outOfStock ? 'opacity-65 grayscale-[30%]' : ''
                             }`}
@@ -1603,9 +1607,11 @@ export function AdminDashboard({
               </button>
             </div>
             <div className="p-5 bg-[#FAF8F4] flex flex-col items-center gap-4">
-              <img
+              <SafeStoreImage
                 src={receiptOrder.receiptImageUrl}
                 alt={`إيصال التحويل البنكي للطلب ${receiptOrder.orderNumber}`}
+                fallbackClassName="w-full h-56 rounded-lg border border-[#E7E0D2]"
+                fallbackLabel="تعذر تحميل صورة الإيصال"
                 className="max-h-[65vh] w-auto object-contain rounded-lg border border-[#E7E0D2] bg-white"
               />
               <div className="w-full flex items-center justify-between text-xs text-[#615B52]">

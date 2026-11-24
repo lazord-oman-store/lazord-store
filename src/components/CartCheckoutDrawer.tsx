@@ -25,6 +25,7 @@ import {
 import { storeRepository } from '../services/storeRepository';
 import type { CartItem, Order, PromoCode, StoreSettings } from '../types/store';
 import { OmrPrice } from './OmrPrice';
+import { SafeStoreImage } from './SafeStoreImage';
 import { WhatsAppIcon } from './WhatsAppIcon';
 
 interface CartCheckoutDrawerProps {
@@ -347,10 +348,10 @@ export function CartCheckoutDrawer({
                           itemOutOfStock ? 'border-red-300 bg-red-50/40' : 'border-[#E7E0D2]'
                         }`}
                       >
-                        <img
+                        <SafeStoreImage
                           src={item.product.imageUrl}
                           alt={item.product.nameAr}
-                          referrerPolicy="no-referrer"
+                          iconClassName="w-5 h-5"
                           className="w-16 h-16 rounded-lg object-cover bg-[#F2EDE3] shrink-0"
                         />
                         <div className="flex-1 min-w-0">
@@ -634,9 +635,11 @@ export function CartCheckoutDrawer({
 
                 {receiptImageUrl && (
                   <div className="pt-2">
-                    <img
+                    <SafeStoreImage
                       src={receiptImageUrl}
                       alt="معاينة إيصال التحويل البنكي"
+                      fallbackClassName="w-full h-36 rounded-lg border border-[#E7E0D2]"
+                      fallbackLabel="تعذر عرض معاينة الإيصال"
                       className="w-full max-h-48 object-contain rounded-lg border border-[#E7E0D2] bg-[#FAF8F4]"
                     />
                   </div>

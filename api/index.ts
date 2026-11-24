@@ -560,14 +560,45 @@ function parseImageUploadDataUrl(dataUrl: string):
 function isSafeProductImageUrl(url: string): boolean {
   const trimmed = url.trim();
   if (!trimmed) return true;
-  if (trimmed.startsWith('/api/uploads/') || trimmed.startsWith('/src/assets/')) {
-    return true;
+  if (
+    trimmed.startsWith('/api/uploads/') ||
+    trimmed.startsWith('/src/assets/') ||
+    trimmed.startsWith('/api/seed-receipt/')
+  ) {
+    return !/[\s"'<>]/.test(trimmed);
   }
   if (/^https?:\/\//i.test(trimmed)) {
-    return true;
+    try {
+      const parsed = new URL(trimmed);
+      return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+    } catch {
+      return false;
+    }
   }
-  if (/^data:image\/[a-z0-9.+_-]+(?:;[a-z0-9=._-]+)*;base64,[A-Za-z0-9+/=\s]+$/i.test(trimmed)) {
-    return true;
+  const base64Match =
+    /^data:(image\/[a-z0-9.+_-]+)(?:;[a-z0-9=._-]+)*;base64,([A-Za-z0-9+/=\s]+)$/i.exec(trimmed);
+  if (base64Match) {
+    const clean = base64Match[2].replace(/\s+/g, '');
+    if (clean.length < 4 || !/^[A-Za-z0-9+/]+={0,2}$/.test(clean)) {
+      return false;
+    }
+    return Buffer.from(clean, 'base64').length > 0;
+  }
+  const rawSvgMatch = /^data:image\/svg\+xml(?:;charset=[^;,]+)?,(.+)$/is.exec(trimmed);
+  if (rawSvgMatch) {
+    let decoded = rawSvgMatch[1];
+    try {
+      decoded = decodeURIComponent(rawSvgMatch[1]);
+    } catch {
+      // ignore malformed escapes
+    }
+    return (
+      /<svg\b/i.test(decoded) &&
+      !/<script\b/i.test(decoded) &&
+      !/\bon[a-z]+\s*=/i.test(decoded) &&
+      !/(?:javascript|vbscript)\s*:/i.test(decoded) &&
+      !/<(?:foreignObject|iframe|object|embed)\b/i.test(decoded)
+    );
   }
   return false;
 }
@@ -576,7 +607,6 @@ async function saveUploadedImage(params: {
   ext: string;
   contentType: string;
   buffer: Buffer;
-  originalDataUrl: string;
 }): Promise<string> {
   const filename = `${crypto.randomUUID()}.${params.ext}`;
   const contentType = params.contentType;
@@ -595,10 +625,10 @@ async function saveUploadedImage(params: {
     }
   }
 
-  // On serverless without persistent KV, embed small validated images as data URLs
-  // so receipts and product photos stay intact across cold starts.
-  if (isServerlessReadOnlyRuntime() && params.buffer.length <= 900 * 1024) {
-    return params.originalDataUrl;
+  // On serverless without persistent KV, embed small validated images as clean single-line data URLs
+  // so receipts and product photos stay intact across cold starts without truncation.
+  if (isServerlessReadOnlyRuntime() && params.buffer.length <= 1200 * 1024) {
+    return `data:${contentType};base64,${params.buffer.toString('base64')}`;
   }
 
   getWarmUploadMap().set(filename, { contentType, data: params.buffer });
@@ -785,6 +815,9 @@ function validateCheckoutInput(input: {
   }
   if (input.address.trim().length < 4) return 'يرجى إدخال الولاية والمنطقة وتفاصيل العنوان.';
   if (!input.receiptImageUrl.trim()) return 'يرجى رفع صورة إيصال التحويل البنكي قبل تأكيد الطلب.';
+  if (!isSafeProductImageUrl(input.receiptImageUrl)) {
+    return 'رابط أو صيغة صورة إيصال التحويل غير صالحة.';
+  }
   return null;
 }
 
@@ -1093,7 +1126,6 @@ export default async function handler(
         ext: parsed.ext,
         contentType: parsed.contentType,
         buffer: parsed.buffer,
-        originalDataUrl: dataUrl,
       });
       sendJson(res, 201, { url });
       return;

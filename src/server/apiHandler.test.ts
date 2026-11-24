@@ -914,6 +914,37 @@ test('API uploads accept all image/* formats (GIF, SVG, AVIF, BMP, HEIC, WebP, P
       preParsedBody: true,
     });
     assert.equal(badProd.statusCode, 400);
+
+    // Reject truncated data URLs on product create & order submit
+    const truncatedProd = await invokeVercelApi({
+      method: 'POST',
+      url: '/api/admin/products',
+      headers: { authorization: `Bearer ${token}` },
+      body: {
+        nameAr: 'عطر بصورة مبتورة',
+        category: 'perfume',
+        notesAr: 'عود',
+        priceOmr: 25,
+        imageUrl: 'data:image/png;base64,',
+      },
+      preParsedBody: true,
+    });
+    assert.equal(truncatedProd.statusCode, 400);
+
+    const truncatedOrder = await invokeVercelApi({
+      method: 'POST',
+      url: '/api/orders',
+      body: {
+        customerName: 'سالم',
+        customerPhone: '91234567',
+        city: 'محافظة مسقط',
+        address: 'بوشر',
+        items: [{ productId: createdProd.json<{ product: { id: string } }>().product.id, quantity: 1 }],
+        receiptImageUrl: 'data:image/png;base64,====',
+      },
+      preParsedBody: true,
+    });
+    assert.equal(truncatedOrder.statusCode, 400);
   } finally {
     resetTestVercelTmpData();
     fs.rmSync(isolatedDir, { recursive: true, force: true });
@@ -927,8 +958,3 @@ test('API uploads accept all image/* formats (GIF, SVG, AVIF, BMP, HEIC, WebP, P
     else process.env.LAZORD_ADMIN_PASSWORD = prevPass;
   }
 });
-
-
-
-
-
