@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { ApiRequestError, storeRepository } from '../services/storeRepository';
 import { BrandLogo } from './BrandLogo';
 
@@ -17,6 +17,7 @@ export function OwnerLoginView({
   const [needsSetup, setNeedsSetup] = useState(initialNeedsSetup);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -80,8 +81,8 @@ export function OwnerLoginView({
               autoComplete="username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="owner@lazord.om"
-              className="w-full px-4 py-2.5 min-h-[44px] bg-[#141311] border border-[#383229] rounded-lg text-sm text-[#FAF8F4] focus:outline-none focus:border-[#B59449]"
+              placeholder="أدخل اسم المستخدم"
+              className="w-full px-4 py-2.5 min-h-[44px] bg-[#141311] border border-[#383229] rounded-lg text-sm text-[#FAF8F4] placeholder:text-[#7B7468] focus:outline-none focus:border-[#B59449]"
             />
           </div>
 
@@ -92,16 +93,32 @@ export function OwnerLoginView({
             >
               كلمة المرور
             </label>
-            <input
-              id="owner-password"
-              type="password"
-              dir="ltr"
-              autoComplete={needsSetup ? 'new-password' : 'current-password'}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              className="w-full px-4 py-2.5 min-h-[44px] bg-[#141311] border border-[#383229] rounded-lg text-sm text-[#FAF8F4] focus:outline-none focus:border-[#B59449]"
-            />
+            <div className="relative" dir="ltr">
+              <input
+                id="owner-password"
+                type={showPassword ? 'text' : 'password'}
+                dir="ltr"
+                autoComplete={needsSetup ? 'new-password' : 'current-password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="أدخل كلمة المرور"
+                className="w-full pl-4 pr-11 py-2.5 min-h-[44px] bg-[#141311] border border-[#383229] rounded-lg text-sm text-[#FAF8F4] placeholder:text-[#7B7468] focus:outline-none focus:border-[#B59449]"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((prev) => !prev)}
+                aria-label={showPassword ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور'}
+                aria-pressed={showPassword}
+                data-testid="toggle-login-password-visibility"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 rounded-md text-[#B59449] hover:text-[#E5C983] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#B59449] transition-colors cursor-pointer"
+              >
+                {showPassword ? (
+                  <EyeOff className="w-4 h-4" aria-hidden="true" />
+                ) : (
+                  <Eye className="w-4 h-4" aria-hidden="true" />
+                )}
+              </button>
+            </div>
           </div>
 
           {error && (

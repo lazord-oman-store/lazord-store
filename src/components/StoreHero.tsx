@@ -74,7 +74,7 @@ export function StoreHero({ brandBio, onExploreCatalog }: StoreHeroProps) {
           <div>
             <h2 className="text-base font-semibold text-[#D4B774]">خلاصات عطرية نادرة</h2>
             <p className="mt-1.5 text-sm text-[#CFC7B8] leading-relaxed">
-              نوتات و زيوت عطيه مختاره بعنايه شديده لتنال على إعجابكم لتجعل من العطر ذات فوحان عالٍ وثبات يدوم طويلاً
+              نوتات و زيوت عطريه مختاره بعنايه شديده لتنال على إعجابكم لتجعل من العطر ذات فوحان عالٍ وثبات يدوم طويلاً
             </p>
           </div>
           <div>

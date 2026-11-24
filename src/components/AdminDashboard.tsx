@@ -5,6 +5,8 @@ import {
   Clock,
   Edit3,
   Eye,
+  EyeOff,
+  KeyRound,
   LogOut,
   Package,
   Plus,
@@ -93,6 +95,7 @@ export function AdminDashboard({
   const [prodPrice, setProdPrice] = useState('');
   const [prodImage, setProdImage] = useState('');
   const [prodOutOfStock, setProdOutOfStock] = useState(false);
+  const [uploadingProductImage, setUploadingProductImage] = useState(false);
   const [savingProduct, setSavingProduct] = useState(false);
 
   // Promo form state
@@ -107,6 +110,17 @@ export function AdminDashboard({
   const [whatsappNum, setWhatsappNum] = useState('');
   const [brandBio, setBrandBio] = useState('');
   const [savingSettings, setSavingSettings] = useState(false);
+
+  // Admin password change form state
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [savingPassword, setSavingPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
 
   const handleAdminError = useCallback(
     (err: unknown, fallbackMessage: string) => {
@@ -273,14 +287,20 @@ export function AdminDashboard({
   };
 
   const handleProductImageUpload = async (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    const input = e.target;
+    const file = input.files?.[0];
     if (!file) return;
+    setUploadingProductImage(true);
+    setError(null);
     try {
       const dataUrl = await readImageFileAsUploadDataUrl(file);
       const url = await storeRepository.uploadImage(dataUrl);
       setProdImage(url);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'تعذر رفع صورة المنتج.');
+    } finally {
+      setUploadingProductImage(false);
+      input.value = '';
     }
   };
 
@@ -450,6 +470,54 @@ export function AdminDashboard({
       handleAdminError(err, 'تعذر حفظ الإعدادات.');
     } finally {
       setSavingSettings(false);
+    }
+  };
+
+  const handleChangePassword = async (e: FormEvent) => {
+    e.preventDefault();
+    setPasswordError(null);
+    setPasswordSuccess(null);
+
+    const cleanCurrent = currentPassword.trim();
+    const cleanNew = newPassword.trim();
+    const cleanConfirm = confirmPassword.trim();
+
+    if (!cleanCurrent) {
+      setPasswordError('يرجى إدخال كلمة المرور الحالية.');
+      return;
+    }
+    if (cleanNew.length < 6) {
+      setPasswordError('يجب أن لا تقل كلمة المرور الجديدة عن 6 أحرف.');
+      return;
+    }
+    if (cleanNew !== cleanConfirm) {
+      setPasswordError('كلمة المرور الجديدة وتأكيدها غير متطابقتين.');
+      return;
+    }
+
+    setSavingPassword(true);
+    try {
+      await storeRepository.changeOwnerPassword({
+        currentPassword: cleanCurrent,
+        newPassword: cleanNew,
+        confirmPassword: cleanConfirm,
+      });
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setShowCurrentPassword(false);
+      setShowNewPassword(false);
+      setShowConfirmPassword(false);
+      setPasswordSuccess('تم تحديث كلمة المرور بنجاح وحفظها في النظام بشكل مشفر.');
+      showToast('تم تغيير كلمة مرور لوحة التحكم بنجاح.');
+    } catch (err) {
+      if (err instanceof UnauthorizedError) {
+        onUnauthorized();
+        return;
+      }
+      setPasswordError(err instanceof Error ? err.message : 'تعذر تحديث كلمة المرور.');
+    } finally {
+      setSavingPassword(false);
     }
   };
 
@@ -1016,10 +1084,16 @@ export function AdminDashboard({
                     <input
                       id="prod-img-upload"
                       type="file"
-                      accept="image/png,image/jpeg,image/webp"
+                      accept="image/*"
                       onChange={handleProductImageUpload}
-                      className="block w-full text-xs text-[#4F4A42] file:me-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-[#EFE9DC] file:text-[#181715] file:font-medium cursor-pointer"
+                      disabled={uploadingProductImage}
+                      className="block w-full text-xs text-[#4F4A42] file:me-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-[#EFE9DC] file:text-[#181715] file:font-medium cursor-pointer disabled:opacity-60"
                     />
+                    {uploadingProductImage && (
+                      <p className="mt-1.5 text-xs text-[#8E6F2D]">
+                        جاري معالجة ورفع صورة المنتج...
+                      </p>
+                    )}
                     {prodImage && (
                       <img
                         src={prodImage}
@@ -1052,16 +1126,18 @@ export function AdminDashboard({
 
                   <button
                     type="submit"
-                    disabled={savingProduct}
-                    className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-5 min-h-[44px] bg-[#141311] hover:bg-[#8E6F2D] text-[#FAF8F4] text-sm font-semibold rounded-lg transition-colors cursor-pointer"
+                    disabled={savingProduct || uploadingProductImage}
+                    className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-5 min-h-[44px] bg-[#141311] hover:bg-[#8E6F2D] disabled:opacity-60 text-[#FAF8F4] text-sm font-semibold rounded-lg transition-colors cursor-pointer"
                   >
                     <Plus className="w-4 h-4" aria-hidden="true" />
                     <span>
-                      {savingProduct
-                        ? 'جاري الحفظ...'
-                        : editingProduct
-                          ? 'حفظ التعديلات'
-                          : 'إضافة المنتج للمتجر'}
+                      {uploadingProductImage
+                        ? 'جاري رفع الصورة...'
+                        : savingProduct
+                          ? 'جاري الحفظ...'
+                          : editingProduct
+                            ? 'حفظ التعديلات'
+                            : 'إضافة المنتج للمتجر'}
                     </span>
                   </button>
                 </form>
@@ -1258,76 +1334,247 @@ export function AdminDashboard({
 
             {/* TAB 4: Store & Payment Settings */}
             {activeTab === 'settings' && (
-              <section className="max-w-2xl bg-white border border-[#E7E0D2] rounded-xl p-6">
-                <h2 className="text-base font-bold text-[#181715] mb-4">
-                  إعدادات التحويل البنكي والهوية
-                </h2>
-                <form onSubmit={handleSaveSettings} className="space-y-4">
-                  <div>
-                    <label htmlFor="settings-bank-phone" className="block text-xs font-medium text-[#4F4A42] mb-1">
-                      رقم الهاتف المسجل بالبنك للتحويل *
-                    </label>
-                    <input
-                      id="settings-bank-phone"
-                      type="text"
-                      dir="ltr"
-                      required
-                      value={bankPhone}
-                      onChange={(e) => setBankPhone(e.target.value)}
-                      className="w-full px-3.5 py-2.5 min-h-[42px] bg-[#FAF8F4] border border-[#D7CCB8] rounded-lg text-sm font-mono"
-                    />
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                <section className="lg:col-span-7 bg-white border border-[#E7E0D2] rounded-xl p-6">
+                  <h2 className="text-base font-bold text-[#181715] mb-4">
+                    إعدادات التحويل البنكي والهوية
+                  </h2>
+                  <form onSubmit={handleSaveSettings} className="space-y-4">
+                    <div>
+                      <label htmlFor="settings-bank-phone" className="block text-xs font-medium text-[#4F4A42] mb-1">
+                        رقم الهاتف المسجل بالبنك للتحويل *
+                      </label>
+                      <input
+                        id="settings-bank-phone"
+                        type="text"
+                        dir="ltr"
+                        required
+                        value={bankPhone}
+                        onChange={(e) => setBankPhone(e.target.value)}
+                        className="w-full px-3.5 py-2.5 min-h-[42px] bg-[#FAF8F4] border border-[#D7CCB8] rounded-lg text-sm font-mono"
+                      />
+                    </div>
+
+                    <div>
+                      <label htmlFor="settings-bank-label" className="block text-xs font-medium text-[#4F4A42] mb-1">
+                        وصف حساب التحويل
+                      </label>
+                      <input
+                        id="settings-bank-label"
+                        type="text"
+                        value={bankLabel}
+                        onChange={(e) => setBankLabel(e.target.value)}
+                        className="w-full px-3.5 py-2.5 min-h-[42px] bg-[#FAF8F4] border border-[#D7CCB8] rounded-lg text-sm"
+                      />
+                    </div>
+
+                    <div>
+                      <label htmlFor="settings-wa" className="block text-xs font-medium text-[#4F4A42] mb-1">
+                        رقم واتساب المتجر *
+                      </label>
+                      <input
+                        id="settings-wa"
+                        type="text"
+                        dir="ltr"
+                        required
+                        value={whatsappNum}
+                        onChange={(e) => setWhatsappNum(e.target.value)}
+                        className="w-full px-3.5 py-2.5 min-h-[42px] bg-[#FAF8F4] border border-[#D7CCB8] rounded-lg text-sm font-mono"
+                      />
+                    </div>
+
+                    <div>
+                      <label htmlFor="settings-bio" className="block text-xs font-medium text-[#4F4A42] mb-1">
+                        النبذة التعريفية عن براند لازورد
+                      </label>
+                      <textarea
+                        id="settings-bio"
+                        rows={4}
+                        value={brandBio}
+                        onChange={(e) => setBrandBio(e.target.value)}
+                        className="w-full px-3.5 py-2.5 bg-[#FAF8F4] border border-[#D7CCB8] rounded-lg text-sm leading-relaxed"
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={savingSettings}
+                      className="px-6 py-3 min-h-[44px] bg-[#141311] hover:bg-[#8E6F2D] text-[#FAF8F4] text-sm font-semibold rounded-lg transition-colors cursor-pointer"
+                    >
+                      {savingSettings ? 'جاري الحفظ...' : 'حفظ الإعدادات'}
+                    </button>
+                  </form>
+                </section>
+
+                <section
+                  aria-label="تغيير كلمة المرور"
+                  data-testid="change-password-section"
+                  className="lg:col-span-5 bg-white border border-[#E7E0D2] rounded-xl p-6 space-y-4"
+                >
+                  <div className="flex items-center gap-2.5 pb-3 border-b border-[#F2EDE3]">
+                    <div className="w-9 h-9 rounded-lg bg-[#141311] text-[#B59449] flex items-center justify-center shrink-0">
+                      <KeyRound className="w-4 h-4" aria-hidden="true" />
+                    </div>
+                    <div>
+                      <h2 className="text-base font-bold text-[#181715]">تغيير كلمة المرور</h2>
+                      <p className="text-xs text-[#615B52]">
+                        تحديث كلمة مرور دخول صاحب البراند مع الحفاظ على جلستك الحالية
+                      </p>
+                    </div>
                   </div>
 
-                  <div>
-                    <label htmlFor="settings-bank-label" className="block text-xs font-medium text-[#4F4A42] mb-1">
-                      وصف حساب التحويل
-                    </label>
-                    <input
-                      id="settings-bank-label"
-                      type="text"
-                      value={bankLabel}
-                      onChange={(e) => setBankLabel(e.target.value)}
-                      className="w-full px-3.5 py-2.5 min-h-[42px] bg-[#FAF8F4] border border-[#D7CCB8] rounded-lg text-sm"
-                    />
-                  </div>
+                  <form onSubmit={handleChangePassword} className="space-y-4">
+                    <div>
+                      <label
+                        htmlFor="current-admin-password"
+                        className="block text-xs font-medium text-[#4F4A42] mb-1"
+                      >
+                        كلمة المرور الحالية *
+                      </label>
+                      <div className="relative" dir="ltr">
+                        <input
+                          id="current-admin-password"
+                          type={showCurrentPassword ? 'text' : 'password'}
+                          dir="ltr"
+                          required
+                          autoComplete="current-password"
+                          value={currentPassword}
+                          onChange={(e) => setCurrentPassword(e.target.value)}
+                          placeholder="أدخل كلمة المرور الحالية"
+                          className="w-full pl-3.5 pr-11 py-2.5 min-h-[42px] bg-[#FAF8F4] border border-[#D7CCB8] rounded-lg text-sm text-[#181715] focus:outline-none focus:border-[#8E6F2D]"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowCurrentPassword((prev) => !prev)}
+                          aria-label={
+                            showCurrentPassword
+                              ? 'إخفاء كلمة المرور الحالية'
+                              : 'إظهار كلمة المرور الحالية'
+                          }
+                          aria-pressed={showCurrentPassword}
+                          data-testid="toggle-current-password-visibility"
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 rounded-md text-[#8E6F2D] hover:text-[#141311] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#B59449] transition-colors cursor-pointer"
+                        >
+                          {showCurrentPassword ? (
+                            <EyeOff className="w-4 h-4" aria-hidden="true" />
+                          ) : (
+                            <Eye className="w-4 h-4" aria-hidden="true" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
 
-                  <div>
-                    <label htmlFor="settings-wa" className="block text-xs font-medium text-[#4F4A42] mb-1">
-                      رقم واتساب المتجر *
-                    </label>
-                    <input
-                      id="settings-wa"
-                      type="text"
-                      dir="ltr"
-                      required
-                      value={whatsappNum}
-                      onChange={(e) => setWhatsappNum(e.target.value)}
-                      className="w-full px-3.5 py-2.5 min-h-[42px] bg-[#FAF8F4] border border-[#D7CCB8] rounded-lg text-sm font-mono"
-                    />
-                  </div>
+                    <div>
+                      <label
+                        htmlFor="new-admin-password"
+                        className="block text-xs font-medium text-[#4F4A42] mb-1"
+                      >
+                        كلمة المرور الجديدة *
+                      </label>
+                      <div className="relative" dir="ltr">
+                        <input
+                          id="new-admin-password"
+                          type={showNewPassword ? 'text' : 'password'}
+                          dir="ltr"
+                          required
+                          autoComplete="new-password"
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          placeholder="6 أحرف فأكثر"
+                          className="w-full pl-3.5 pr-11 py-2.5 min-h-[42px] bg-[#FAF8F4] border border-[#D7CCB8] rounded-lg text-sm text-[#181715] focus:outline-none focus:border-[#8E6F2D]"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowNewPassword((prev) => !prev)}
+                          aria-label={
+                            showNewPassword
+                              ? 'إخفاء كلمة المرور الجديدة'
+                              : 'إظهار كلمة المرور الجديدة'
+                          }
+                          aria-pressed={showNewPassword}
+                          data-testid="toggle-new-password-visibility"
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 rounded-md text-[#8E6F2D] hover:text-[#141311] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#B59449] transition-colors cursor-pointer"
+                        >
+                          {showNewPassword ? (
+                            <EyeOff className="w-4 h-4" aria-hidden="true" />
+                          ) : (
+                            <Eye className="w-4 h-4" aria-hidden="true" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
 
-                  <div>
-                    <label htmlFor="settings-bio" className="block text-xs font-medium text-[#4F4A42] mb-1">
-                      النبذة التعريفية عن براند لازورد
-                    </label>
-                    <textarea
-                      id="settings-bio"
-                      rows={4}
-                      value={brandBio}
-                      onChange={(e) => setBrandBio(e.target.value)}
-                      className="w-full px-3.5 py-2.5 bg-[#FAF8F4] border border-[#D7CCB8] rounded-lg text-sm leading-relaxed"
-                    />
-                  </div>
+                    <div>
+                      <label
+                        htmlFor="confirm-admin-password"
+                        className="block text-xs font-medium text-[#4F4A42] mb-1"
+                      >
+                        تأكيد كلمة المرور الجديدة *
+                      </label>
+                      <div className="relative" dir="ltr">
+                        <input
+                          id="confirm-admin-password"
+                          type={showConfirmPassword ? 'text' : 'password'}
+                          dir="ltr"
+                          required
+                          autoComplete="new-password"
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          placeholder="أعد إدخال كلمة المرور الجديدة"
+                          className="w-full pl-3.5 pr-11 py-2.5 min-h-[42px] bg-[#FAF8F4] border border-[#D7CCB8] rounded-lg text-sm text-[#181715] focus:outline-none focus:border-[#8E6F2D]"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowConfirmPassword((prev) => !prev)}
+                          aria-label={
+                            showConfirmPassword
+                              ? 'إخفاء تأكيد كلمة المرور الجديدة'
+                              : 'إظهار تأكيد كلمة المرور الجديدة'
+                          }
+                          aria-pressed={showConfirmPassword}
+                          data-testid="toggle-confirm-password-visibility"
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 rounded-md text-[#8E6F2D] hover:text-[#141311] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#B59449] transition-colors cursor-pointer"
+                        >
+                          {showConfirmPassword ? (
+                            <EyeOff className="w-4 h-4" aria-hidden="true" />
+                          ) : (
+                            <Eye className="w-4 h-4" aria-hidden="true" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
 
-                  <button
-                    type="submit"
-                    disabled={savingSettings}
-                    className="px-6 py-3 min-h-[44px] bg-[#141311] hover:bg-[#8E6F2D] text-[#FAF8F4] text-sm font-semibold rounded-lg transition-colors cursor-pointer"
-                  >
-                    {savingSettings ? 'جاري الحفظ...' : 'حفظ الإعدادات'}
-                  </button>
-                </form>
-              </section>
+                    {passwordError && (
+                      <div
+                        role="alert"
+                        data-testid="password-change-error"
+                        className="p-3 rounded-lg bg-red-50 border border-red-200 text-xs sm:text-sm text-red-800"
+                      >
+                        {passwordError}
+                      </div>
+                    )}
+
+                    {passwordSuccess && (
+                      <div
+                        role="status"
+                        data-testid="password-change-success"
+                        className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-xs sm:text-sm text-emerald-900"
+                      >
+                        {passwordSuccess}
+                      </div>
+                    )}
+
+                    <button
+                      type="submit"
+                      disabled={savingPassword}
+                      data-testid="save-password-btn"
+                      className="w-full px-6 py-3 min-h-[44px] bg-[#141311] hover:bg-[#8E6F2D] disabled:opacity-60 text-[#FAF8F4] border border-[#B59449]/40 text-sm font-semibold rounded-lg transition-colors cursor-pointer"
+                    >
+                      {savingPassword ? 'جاري التحديث...' : 'حفظ كلمة المرور الجديدة'}
+                    </button>
+                  </form>
+                </section>
+              </div>
             )}
           </>
         )}

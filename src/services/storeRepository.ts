@@ -51,6 +51,11 @@ export interface LazordStoreRepository {
   togglePromoCode(id: string, active: boolean): Promise<PromoCode>;
   deletePromoCode(id: string): Promise<void>;
   updateSettings(settings: Partial<StoreSettings>): Promise<StoreSettings>;
+  changeOwnerPassword(payload: {
+    currentPassword: string;
+    newPassword: string;
+    confirmPassword: string;
+  }): Promise<{ ok: boolean; username: string }>;
 }
 
 const OWNER_TOKEN_STORAGE_KEY = 'lazord_owner_token';
@@ -359,6 +364,25 @@ class ApiStoreRepository implements LazordStoreRepository {
       { attachAuth: true }
     );
     return res.settings;
+  }
+
+  async changeOwnerPassword(payload: {
+    currentPassword: string;
+    newPassword: string;
+    confirmPassword: string;
+  }): Promise<{ ok: boolean; username: string }> {
+    const res = await requestJson<{ ok: boolean; username: string; token?: string }>(
+      '/api/admin/password',
+      {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+      },
+      { attachAuth: true }
+    );
+    if (res.token) {
+      setStoredOwnerToken(res.token);
+    }
+    return { ok: res.ok, username: res.username };
   }
 }
 

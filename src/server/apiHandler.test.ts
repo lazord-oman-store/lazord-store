@@ -690,5 +690,245 @@ test('Admin can add/update outOfStock product state with safe fallback and API r
   }
 });
 
+test('Protected password change stores scrypt credential, prioritizes stored password over env default, and preserves active session', async () => {
+  const prevVercel = process.env.VERCEL;
+  const prevUser = process.env.LAZORD_ADMIN_USERNAME;
+  const prevPass = process.env.LAZORD_ADMIN_PASSWORD;
+
+  try {
+    process.env.VERCEL = '1';
+    process.env.LAZORD_ADMIN_USERNAME = 'owner@lazord.om';
+    process.env.LAZORD_ADMIN_PASSWORD = 'InitialEnvPassword!1';
+    resetTestVercelTmpData();
+
+    // Unauthenticated call must be rejected
+    const unauthChange = await invokeVercelApi({
+      method: 'PUT',
+      url: '/api/index?__apiPath=admin/password',
+      body: {
+        currentPassword: 'InitialEnvPassword!1',
+        newPassword: 'UpdatedPassword!2',
+        confirmPassword: 'UpdatedPassword!2',
+      },
+      preParsedBody: true,
+    });
+    assert.equal(unauthChange.statusCode, 401);
+
+    // 1. Login initially with LAZORD_ADMIN_PASSWORD fallback
+    const loginInitial = await invokeVercelApi({
+      method: 'POST',
+      url: '/api/index?__apiPath=admin/login',
+      body: { username: 'owner@lazord.om', password: 'InitialEnvPassword!1' },
+      preParsedBody: true,
+    });
+    assert.equal(loginInitial.statusCode, 200);
+    const { token: firstToken } = loginInitial.json<{ token: string }>();
+
+    // 2. Reject wrong current password with 400 (without terminating session)
+    const wrongCurrent = await invokeVercelApi({
+      method: 'PUT',
+      url: '/api/index?__apiPath=admin/password',
+      headers: { authorization: `Bearer ${firstToken}` },
+      body: {
+        currentPassword: 'WrongPassword',
+        newPassword: 'UpdatedPassword!2',
+        confirmPassword: 'UpdatedPassword!2',
+      },
+      preParsedBody: true,
+    });
+    assert.equal(wrongCurrent.statusCode, 400);
+
+    // 3. Reject mismatched confirmation
+    const mismatch = await invokeVercelApi({
+      method: 'PUT',
+      url: '/api/index?__apiPath=admin/password',
+      headers: { authorization: `Bearer ${firstToken}` },
+      body: {
+        currentPassword: 'InitialEnvPassword!1',
+        newPassword: 'UpdatedPassword!2',
+        confirmPassword: 'DifferentPassword!3',
+      },
+      preParsedBody: true,
+    });
+    assert.equal(mismatch.statusCode, 400);
+
+    // 4. Valid password update succeeds and returns refreshed token
+    const updateRes = await invokeVercelApi({
+      method: 'PUT',
+      url: '/api/index?__apiPath=admin/password',
+      headers: { authorization: `Bearer ${firstToken}` },
+      body: {
+        currentPassword: 'InitialEnvPassword!1',
+        newPassword: 'UpdatedPassword!2',
+        confirmPassword: 'UpdatedPassword!2',
+      },
+      preParsedBody: true,
+    });
+    assert.equal(updateRes.statusCode, 200);
+    const updateJson = updateRes.json<{ ok: boolean; username: string; token: string }>();
+    assert.equal(updateJson.ok, true);
+    assert.ok(updateJson.token);
+
+    // 5. Refreshed session token works immediately for admin routes
+    const dashAfterUpdate = await invokeVercelApi({
+      method: 'GET',
+      url: '/api/index?__apiPath=admin/dashboard',
+      headers: { authorization: `Bearer ${updateJson.token}` },
+    });
+    assert.equal(dashAfterUpdate.statusCode, 200);
+
+    // 6. Old LAZORD_ADMIN_PASSWORD is rejected once persisted password is saved
+    const oldPassLogin = await invokeVercelApi({
+      method: 'POST',
+      url: '/api/index?__apiPath=auth/login',
+      body: { username: 'owner@lazord.om', password: 'InitialEnvPassword!1' },
+      preParsedBody: true,
+    });
+    assert.equal(oldPassLogin.statusCode, 401);
+
+    // 7. New persisted password succeeds on login
+    const newPassLogin = await invokeVercelApi({
+      method: 'POST',
+      url: '/api/index?__apiPath=auth/login',
+      body: { username: 'owner@lazord.om', password: 'UpdatedPassword!2' },
+      preParsedBody: true,
+    });
+    assert.equal(newPassLogin.statusCode, 200);
+    assert.equal(newPassLogin.json<{ authenticated: boolean }>().authenticated, true);
+  } finally {
+    resetTestVercelTmpData();
+    if (prevVercel === undefined) delete process.env.VERCEL;
+    else process.env.VERCEL = prevVercel;
+    if (prevUser === undefined) delete process.env.LAZORD_ADMIN_USERNAME;
+    else process.env.LAZORD_ADMIN_USERNAME = prevUser;
+    if (prevPass === undefined) delete process.env.LAZORD_ADMIN_PASSWORD;
+    else process.env.LAZORD_ADMIN_PASSWORD = prevPass;
+  }
+});
+
+test('API uploads accept all image/* formats (GIF, SVG, AVIF, BMP, HEIC, WebP, PNG, JPG), serve with hardened headers, and reject unsafe payloads', async () => {
+  const prevVercel = process.env.VERCEL;
+  const prevDataDir = process.env.LAZORD_DATA_DIR;
+  const prevUser = process.env.LAZORD_ADMIN_USERNAME;
+  const prevPass = process.env.LAZORD_ADMIN_PASSWORD;
+  const isolatedDir = path.join(os.tmpdir(), `lazord-upload-test-${Date.now()}`);
+
+  try {
+    // Test direct /api/uploads/:filename storage + retrieval path using isolated temp data dir
+    delete process.env.VERCEL;
+    process.env.LAZORD_DATA_DIR = isolatedDir;
+    process.env.LAZORD_ADMIN_USERNAME = 'owner@lazord.om';
+    process.env.LAZORD_ADMIN_PASSWORD = 'UploadPass!2026';
+    resetTestVercelTmpData();
+
+    const cleanSvg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="10" height="10"/></svg>').toString('base64');
+    const tinyBytes = Buffer.from([1, 2, 3, 4]).toString('base64');
+
+    const formats: { mime: string; base64: string; expectedExt: string }[] = [
+      { mime: 'image/gif', base64: tinyBytes, expectedExt: 'gif' },
+      { mime: 'image/svg+xml', base64: cleanSvg, expectedExt: 'svg' },
+      { mime: 'image/avif', base64: tinyBytes, expectedExt: 'avif' },
+      { mime: 'image/bmp', base64: tinyBytes, expectedExt: 'bmp' },
+      { mime: 'image/heic', base64: tinyBytes, expectedExt: 'heic' },
+      { mime: 'image/webp', base64: tinyBytes, expectedExt: 'webp' },
+      { mime: 'image/png', base64: tinyBytes, expectedExt: 'png' },
+      { mime: 'image/jpeg', base64: tinyBytes, expectedExt: 'jpg' },
+    ];
+
+    let lastUploadedUrl = '';
+    for (const fmt of formats) {
+      const up = await invokeVercelApi({
+        method: 'POST',
+        url: '/api/uploads',
+        body: { dataUrl: `data:${fmt.mime};base64,${fmt.base64}` },
+        preParsedBody: true,
+      });
+      assert.equal(up.statusCode, 201, `Expected 201 for ${fmt.mime}`);
+      const { url } = up.json<{ url: string }>();
+      assert.ok(url.startsWith('/api/uploads/') && url.endsWith(`.${fmt.expectedExt}`), `Unexpected URL ${url}`);
+      lastUploadedUrl = url;
+
+      const fetched = await invokeVercelApi({ method: 'GET', url });
+      assert.equal(fetched.statusCode, 200);
+      assert.equal(fetched.headers['content-type'], fmt.mime);
+      assert.equal(fetched.headers['x-content-type-options'], 'nosniff');
+      assert.ok(String(fetched.headers['content-security-policy'] || '').includes('sandbox'));
+    }
+
+    // Reject script-injected SVG
+    const evilSvg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>').toString('base64');
+    const evilUp = await invokeVercelApi({
+      method: 'POST',
+      url: '/api/uploads',
+      body: { dataUrl: `data:image/svg+xml;base64,${evilSvg}` },
+      preParsedBody: true,
+    });
+    assert.equal(evilUp.statusCode, 400);
+
+    // Reject non-image data URL
+    const textUp = await invokeVercelApi({
+      method: 'POST',
+      url: '/api/uploads',
+      body: { dataUrl: `data:text/plain;base64,${tinyBytes}` },
+      preParsedBody: true,
+    });
+    assert.equal(textUp.statusCode, 400);
+
+    // Admin can create a product with the uploaded image URL, and unsafe URL schemes are rejected
+    const login = await invokeVercelApi({
+      method: 'POST',
+      url: '/api/auth/login',
+      body: { username: 'owner@lazord.om', password: 'UploadPass!2026' },
+      preParsedBody: true,
+    });
+    assert.equal(login.statusCode, 200, `Login failed: ${login.bodyText}`);
+    const { token } = login.json<{ token: string }>();
+
+    const createdProd = await invokeVercelApi({
+      method: 'POST',
+      url: '/api/admin/products',
+      headers: { authorization: `Bearer ${token}` },
+      body: {
+        nameAr: 'عطر تجربة صيغة',
+        category: 'perfume',
+        notesAr: 'عود وعنبر',
+        priceOmr: 25,
+        imageUrl: lastUploadedUrl,
+      },
+      preParsedBody: true,
+    });
+    assert.equal(createdProd.statusCode, 201, `Create product failed: ${createdProd.bodyText}`);
+    assert.equal(createdProd.json<{ product: { imageUrl: string } }>().product.imageUrl, lastUploadedUrl);
+
+    const badProd = await invokeVercelApi({
+      method: 'POST',
+      url: '/api/admin/products',
+      headers: { authorization: `Bearer ${token}` },
+      body: {
+        nameAr: 'عطر غير آمن',
+        category: 'perfume',
+        notesAr: 'عود',
+        priceOmr: 25,
+        imageUrl: 'javascript:alert(1)',
+      },
+      preParsedBody: true,
+    });
+    assert.equal(badProd.statusCode, 400);
+  } finally {
+    resetTestVercelTmpData();
+    fs.rmSync(isolatedDir, { recursive: true, force: true });
+    if (prevVercel === undefined) delete process.env.VERCEL;
+    else process.env.VERCEL = prevVercel;
+    if (prevDataDir === undefined) delete process.env.LAZORD_DATA_DIR;
+    else process.env.LAZORD_DATA_DIR = prevDataDir;
+    if (prevUser === undefined) delete process.env.LAZORD_ADMIN_USERNAME;
+    else process.env.LAZORD_ADMIN_USERNAME = prevUser;
+    if (prevPass === undefined) delete process.env.LAZORD_ADMIN_PASSWORD;
+    else process.env.LAZORD_ADMIN_PASSWORD = prevPass;
+  }
+});
+
+
+
 
 

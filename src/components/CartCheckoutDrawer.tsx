@@ -627,7 +627,7 @@ export function CartCheckoutDrawer({
                 <input
                   id="receipt-upload-input"
                   type="file"
-                  accept="image/png,image/jpeg,image/webp"
+                  accept="image/*"
                   onChange={handleReceiptFileChange}
                   className="sr-only"
                 />

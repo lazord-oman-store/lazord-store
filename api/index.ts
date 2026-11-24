@@ -289,9 +289,12 @@ async function kvCommand<T>(creds: KvCredentials, args: (string | number)[]): Pr
 }
 
 function getStoragePaths(): { dataDir: string; uploadsDir: string; storeFile: string } {
-  const baseDir = isServerlessReadOnlyRuntime()
-    ? path.join(os.tmpdir(), 'lazord-data')
-    : path.resolve(process.cwd(), 'data');
+  const explicitDir = cleanEnvValue(process.env.LAZORD_DATA_DIR);
+  const baseDir = explicitDir
+    ? path.resolve(explicitDir)
+    : isServerlessReadOnlyRuntime()
+      ? path.join(os.tmpdir(), 'lazord-data')
+      : path.resolve(process.cwd(), 'data');
   return {
     dataDir: baseDir,
     uploadsDir: path.join(baseDir, 'uploads'),
@@ -455,18 +458,128 @@ function getWarmUploadMap(): Map<string, { contentType: string; data: Buffer }> 
   return globalThis.__lazordWarmUploads;
 }
 
+const MIME_TO_EXT: Record<string, string> = {
+  'image/png': 'png',
+  'image/jpeg': 'jpg',
+  'image/jpg': 'jpg',
+  'image/pjpeg': 'jpg',
+  'image/webp': 'webp',
+  'image/gif': 'gif',
+  'image/svg+xml': 'svg',
+  'image/svg': 'svg',
+  'image/avif': 'avif',
+  'image/bmp': 'bmp',
+  'image/x-ms-bmp': 'bmp',
+  'image/x-bmp': 'bmp',
+  'image/heic': 'heic',
+  'image/heic-sequence': 'heic',
+  'image/heif': 'heif',
+  'image/heif-sequence': 'heif',
+  'image/tiff': 'tiff',
+  'image/x-tiff': 'tiff',
+  'image/x-icon': 'ico',
+  'image/vnd.microsoft.icon': 'ico',
+  'image/ico': 'ico',
+  'image/jxl': 'jxl',
+};
+
+const EXT_TO_MIME: Record<string, string> = {
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  webp: 'image/webp',
+  gif: 'image/gif',
+  svg: 'image/svg+xml',
+  avif: 'image/avif',
+  bmp: 'image/bmp',
+  heic: 'image/heic',
+  heif: 'image/heif',
+  tiff: 'image/tiff',
+  tif: 'image/tiff',
+  ico: 'image/x-icon',
+  jxl: 'image/jxl',
+};
+
+function parseImageUploadDataUrl(dataUrl: string):
+  | { ok: true; ext: string; contentType: string; buffer: Buffer }
+  | { ok: false; error: string } {
+  const match =
+    /^data:(image\/[a-z0-9.+_-]+)(?:;[a-z0-9=._-]+)*;base64,([A-Za-z0-9+/=\s]+)$/i.exec(
+      dataUrl.trim()
+    );
+  if (!match) {
+    return {
+      ok: false,
+      error: 'صيغة الصورة غير صالحة. يرجى اختيار ملف صورة صالح (PNG, JPG, WebP, GIF, SVG, AVIF, BMP, HEIC...).',
+    };
+  }
+
+  const contentType = match[1].toLowerCase();
+  const base64Clean = match[2].replace(/\s+/g, '');
+  if (!base64Clean) {
+    return { ok: false, error: 'ملف الصورة فارغ أو غير صالح.' };
+  }
+
+  const buffer = Buffer.from(base64Clean, 'base64');
+  if (buffer.length === 0) {
+    return { ok: false, error: 'تعذر قراءة محتوى الصورة.' };
+  }
+  if (buffer.length > 5 * 1024 * 1024) {
+    return { ok: false, error: 'حجم الصورة يتجاوز الحد الأقصى المسموح (5 ميجابايت).' };
+  }
+
+  const subtype = contentType.slice('image/'.length);
+  const mappedExt =
+    MIME_TO_EXT[contentType] ||
+    subtype.replace(/[^a-z0-9]/g, '').slice(0, 8) ||
+    'img';
+
+  if (mappedExt === 'svg' || contentType.includes('svg')) {
+    const svgText = buffer.toString('utf8');
+    if (!/<svg\b/i.test(svgText)) {
+      return { ok: false, error: 'ملف SVG المختار غير صالح.' };
+    }
+    if (
+      /<script\b/i.test(svgText) ||
+      /\bon[a-z]+\s*=/i.test(svgText) ||
+      /(?:javascript|vbscript)\s*:/i.test(svgText) ||
+      /<(?:foreignObject|iframe|object|embed)\b/i.test(svgText)
+    ) {
+      return { ok: false, error: 'ملف SVG يحتوي على عناصر برمجية غير مسموح بها.' };
+    }
+  }
+
+  return {
+    ok: true,
+    ext: mappedExt,
+    contentType,
+    buffer,
+  };
+}
+
+function isSafeProductImageUrl(url: string): boolean {
+  const trimmed = url.trim();
+  if (!trimmed) return true;
+  if (trimmed.startsWith('/api/uploads/') || trimmed.startsWith('/src/assets/')) {
+    return true;
+  }
+  if (/^https?:\/\//i.test(trimmed)) {
+    return true;
+  }
+  if (/^data:image\/[a-z0-9.+_-]+(?:;[a-z0-9=._-]+)*;base64,[A-Za-z0-9+/=\s]+$/i.test(trimmed)) {
+    return true;
+  }
+  return false;
+}
+
 async function saveUploadedImage(params: {
-  ext: 'png' | 'jpg' | 'webp';
+  ext: string;
+  contentType: string;
   buffer: Buffer;
   originalDataUrl: string;
 }): Promise<string> {
   const filename = `${crypto.randomUUID()}.${params.ext}`;
-  const contentType =
-    params.ext === 'png'
-      ? 'image/png'
-      : params.ext === 'webp'
-        ? 'image/webp'
-        : 'image/jpeg';
+  const contentType = params.contentType;
 
   const kv = getKvCredentials();
   if (kv) {
@@ -506,7 +619,7 @@ async function saveUploadedImage(params: {
 async function readUploadedImage(
   filename: string
 ): Promise<{ contentType: string; data: Buffer } | null> {
-  if (!/^[a-zA-Z0-9-]+\.(png|jpg|webp)$/.test(filename)) {
+  if (!/^[a-zA-Z0-9-]+\.[a-z0-9]{2,10}$/.test(filename)) {
     return null;
   }
 
@@ -539,9 +652,8 @@ async function readUploadedImage(
     if (!resolved.startsWith(uploadsDir + path.sep) || !fs.existsSync(resolved)) {
       return null;
     }
-    const ext = path.extname(filename).toLowerCase();
-    const contentType =
-      ext === '.png' ? 'image/png' : ext === '.webp' ? 'image/webp' : 'image/jpeg';
+    const ext = path.extname(filename).toLowerCase().slice(1);
+    const contentType = EXT_TO_MIME[ext] || `image/${ext || 'octet-stream'}`;
     return {
       contentType,
       data: fs.readFileSync(resolved),
@@ -797,12 +909,18 @@ function sendBuffer(
   statusCode: number,
   contentType: string,
   data: Buffer | string,
-  cacheControl = 'no-store'
+  cacheControl = 'no-store',
+  extraHeaders?: Record<string, string>
 ): void {
   if (res.writableEnded) return;
   res.statusCode = statusCode;
   res.setHeader('Content-Type', contentType);
   res.setHeader('Cache-Control', cacheControl);
+  if (extraHeaders) {
+    for (const [k, v] of Object.entries(extraHeaders)) {
+      res.setHeader(k, v);
+    }
+  }
   res.end(data);
 }
 
@@ -965,20 +1083,18 @@ export default async function handler(
         return;
       }
 
-      const match = /^data:image\/(png|jpeg|jpg|webp);base64,([A-Za-z0-9+/=]+)$/.exec(dataUrl);
-      if (!match) {
-        sendJson(res, 400, { error: 'صيغة الصورة غير مدعومة. الصيغ المدعومة: PNG, JPG, WEBP.' });
+      const parsed = parseImageUploadDataUrl(dataUrl);
+      if (parsed.ok === false) {
+        sendJson(res, 400, { error: parsed.error });
         return;
       }
 
-      const ext = (match[1] === 'jpeg' ? 'jpg' : match[1]) as 'png' | 'jpg' | 'webp';
-      const buffer = Buffer.from(match[2], 'base64');
-      if (buffer.length > 5 * 1024 * 1024) {
-        sendJson(res, 400, { error: 'حجم الصورة يتجاوز الحد الأقصى المسموح (5 ميجابايت).' });
-        return;
-      }
-
-      const url = await saveUploadedImage({ ext, buffer, originalDataUrl: dataUrl });
+      const url = await saveUploadedImage({
+        ext: parsed.ext,
+        contentType: parsed.contentType,
+        buffer: parsed.buffer,
+        originalDataUrl: dataUrl,
+      });
       sendJson(res, 201, { url });
       return;
     }
@@ -990,7 +1106,10 @@ export default async function handler(
         sendJson(res, 404, { error: 'الصورة المطلوبة غير موجودة.' });
         return;
       }
-      sendBuffer(res, 200, asset.contentType, asset.data, 'public, max-age=31536000, immutable');
+      sendBuffer(res, 200, asset.contentType, asset.data, 'public, max-age=31536000, immutable', {
+        'X-Content-Type-Options': 'nosniff',
+        'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; sandbox",
+      });
       return;
     }
 
@@ -1233,13 +1352,49 @@ export default async function handler(
       return;
     }
 
-    if (method === 'POST' && pathname === '/api/auth/login') {
+    if (method === 'POST' && (pathname === '/api/auth/login' || pathname === '/api/admin/login')) {
       const body = await readJsonBody<{ username?: string; password?: string }>(req);
       const cleanUser = (body.username || '').trim();
       const cleanPass = (body.password || '').trim();
 
       const envPass = cleanEnvValue(process.env.LAZORD_ADMIN_PASSWORD);
       const envUser = cleanEnvValue(process.env.LAZORD_ADMIN_USERNAME) || 'owner@lazord.om';
+      const state = await readStoreState();
+
+      // Prioritize saved/updated password credential in Redis/KV when present
+      if (state.adminCredential) {
+        const userMatches = constantTimeMatch(
+          cleanUser.toLowerCase(),
+          state.adminCredential.username.trim().toLowerCase()
+        );
+        const passMatches = verifyPasswordScrypt(
+          cleanPass,
+          state.adminCredential.salt,
+          state.adminCredential.hash
+        );
+
+        if (!userMatches || !passMatches) {
+          sendJson(res, 401, {
+            error:
+              'بيانات الدخول غير صحيحة. يرجى التحقق من البريد/اسم المستخدم وكلمة المرور.',
+          });
+          return;
+        }
+
+        const secret = getEffectiveSessionSecret(envPass ? undefined : state);
+        const token = signSessionToken(state.adminCredential.username, secret);
+        const cookieAttrs = buildCookieAttributes(req, Math.floor(SESSION_TTL_MS / 1000));
+        res.setHeader(
+          'Set-Cookie',
+          `${SESSION_COOKIE_NAME}=${encodeURIComponent(token)}; ${cookieAttrs}`
+        );
+        sendJson(res, 200, {
+          authenticated: true,
+          username: state.adminCredential.username,
+          token,
+        });
+        return;
+      }
 
       if (envPass) {
         const userValid = constantTimeMatch(cleanUser.toLowerCase(), envUser.toLowerCase());
@@ -1266,45 +1421,10 @@ export default async function handler(
         return;
       }
 
-      const state = await readStoreState();
-      if (!state.adminCredential) {
-        sendJson(res, 400, {
-          error:
-            'يرجى إعداد حساب صاحب البراند أو ضبط متغيرات البيئة LAZORD_ADMIN_USERNAME و LAZORD_ADMIN_PASSWORD.',
-          needsSetup: true,
-        });
-        return;
-      }
-
-      const userMatches = constantTimeMatch(
-        cleanUser.toLowerCase(),
-        state.adminCredential.username.trim().toLowerCase()
-      );
-      const passMatches = verifyPasswordScrypt(
-        cleanPass,
-        state.adminCredential.salt,
-        state.adminCredential.hash
-      );
-
-      if (!userMatches || !passMatches) {
-        sendJson(res, 401, {
-          error:
-            'بيانات الدخول غير صحيحة. يرجى التحقق من البريد/اسم المستخدم وكلمة المرور.',
-        });
-        return;
-      }
-
-      const secret = getEffectiveSessionSecret(state);
-      const token = signSessionToken(state.adminCredential.username, secret);
-      const cookieAttrs = buildCookieAttributes(req, Math.floor(SESSION_TTL_MS / 1000));
-      res.setHeader(
-        'Set-Cookie',
-        `${SESSION_COOKIE_NAME}=${encodeURIComponent(token)}; ${cookieAttrs}`
-      );
-      sendJson(res, 200, {
-        authenticated: true,
-        username: state.adminCredential.username,
-        token,
+      sendJson(res, 400, {
+        error:
+          'يرجى إعداد حساب صاحب البراند أو ضبط متغيرات البيئة LAZORD_ADMIN_USERNAME و LAZORD_ADMIN_PASSWORD.',
+        needsSetup: true,
       });
       return;
     }
@@ -1379,6 +1499,10 @@ export default async function handler(
           sendJson(res, 400, { error: 'يرجى إدخال اسم المنتج والوصف العطري وسعر صحيح.' });
           return;
         }
+        if (!isSafeProductImageUrl(imageUrl)) {
+          sendJson(res, 400, { error: 'رابط صورة المنتج غير صالح.' });
+          return;
+        }
 
         const newProduct: Product = {
           id: `prod-${crypto.randomUUID().slice(0, 8)}`,
@@ -1419,6 +1543,10 @@ export default async function handler(
             body.priceOmr !== undefined ? roundOmr(Number(body.priceOmr)) : existing.priceOmr;
           if (!Number.isFinite(priceOmr) || priceOmr <= 0) {
             sendJson(res, 400, { error: 'يرجى إدخال سعر صحيح للمنتج.' });
+            return;
+          }
+          if (body.imageUrl !== undefined && !isSafeProductImageUrl(body.imageUrl)) {
+            sendJson(res, 400, { error: 'رابط صورة المنتج غير صالح.' });
             return;
           }
 
@@ -1561,6 +1689,67 @@ export default async function handler(
         };
         await writeStoreState(state);
         sendJson(res, 200, { settings: state.settings });
+        return;
+      }
+
+      if ((method === 'PUT' || method === 'POST') && pathname === '/api/admin/password') {
+        const body = await readJsonBody<{
+          currentPassword?: unknown;
+          newPassword?: unknown;
+          confirmPassword?: unknown;
+        }>(req);
+
+        const currentPassword =
+          typeof body.currentPassword === 'string' ? body.currentPassword.trim() : '';
+        const newPassword = typeof body.newPassword === 'string' ? body.newPassword.trim() : '';
+        const confirmPassword =
+          typeof body.confirmPassword === 'string' ? body.confirmPassword.trim() : '';
+
+        if (!currentPassword) {
+          sendJson(res, 400, { error: 'يرجى إدخال كلمة المرور الحالية.' });
+          return;
+        }
+        if (!newPassword || newPassword.length < 6) {
+          sendJson(res, 400, { error: 'يجب أن لا تقل كلمة المرور الجديدة عن 6 أحرف.' });
+          return;
+        }
+        if (newPassword !== confirmPassword) {
+          sendJson(res, 400, { error: 'كلمة المرور الجديدة وتأكيدها غير متطابقتين.' });
+          return;
+        }
+
+        let currentValid = false;
+        if (state.adminCredential) {
+          currentValid = verifyPasswordScrypt(
+            currentPassword,
+            state.adminCredential.salt,
+            state.adminCredential.hash
+          );
+        } else if (envPass) {
+          currentValid = constantTimeMatch(currentPassword, envPass);
+        }
+
+        if (!currentValid) {
+          sendJson(res, 400, { error: 'كلمة المرور الحالية غير صحيحة.' });
+          return;
+        }
+
+        const envUser = cleanEnvValue(process.env.LAZORD_ADMIN_USERNAME) || 'owner@lazord.om';
+        const username = state.adminCredential?.username || session.username || envUser;
+        const { salt, hash } = hashPasswordScrypt(newPassword);
+
+        state.adminCredential = { username, salt, hash };
+        await writeStoreState(state);
+
+        const nextSecret = getEffectiveSessionSecret(envPass ? undefined : state);
+        const nextToken = signSessionToken(username, nextSecret);
+        const cookieAttrs = buildCookieAttributes(req, Math.floor(SESSION_TTL_MS / 1000));
+        res.setHeader(
+          'Set-Cookie',
+          `${SESSION_COOKIE_NAME}=${encodeURIComponent(nextToken)}; ${cookieAttrs}`
+        );
+
+        sendJson(res, 200, { ok: true, username, token: nextToken });
         return;
       }
     }
