@@ -958,3 +958,90 @@ test('API uploads accept all image/* formats (GIF, SVG, AVIF, BMP, HEIC, WebP, P
     else process.env.LAZORD_ADMIN_PASSWORD = prevPass;
   }
 });
+
+test('Seasonal store decorations persist via protected /api/admin/seasonal-theme with safe default fallback', async () => {
+  const prevVercel = process.env.VERCEL;
+  const prevUser = process.env.LAZORD_ADMIN_USERNAME;
+  const prevPass = process.env.LAZORD_ADMIN_PASSWORD;
+
+  try {
+    process.env.VERCEL = '1';
+    process.env.LAZORD_ADMIN_USERNAME = 'owner@lazord.om';
+    process.env.LAZORD_ADMIN_PASSWORD = 'SeasonalPass!2026';
+    resetTestVercelTmpData();
+
+    // Legacy store without seasonalTheme must default safely to 'default'
+    const sfInitial = await invokeVercelApi({
+      method: 'GET',
+      url: '/api/index?__apiPath=storefront',
+    });
+    assert.equal(sfInitial.statusCode, 200);
+    assert.equal(
+      sfInitial.json<{ settings: { seasonalTheme?: string } }>().settings.seasonalTheme,
+      'default'
+    );
+
+    // Unauthenticated call must be rejected with 401
+    const unauthTheme = await invokeVercelApi({
+      method: 'PUT',
+      url: '/api/index?__apiPath=admin/seasonal-theme',
+      body: { seasonalTheme: 'ramadan' },
+      preParsedBody: true,
+    });
+    assert.equal(unauthTheme.statusCode, 401);
+
+    const login = await invokeVercelApi({
+      method: 'POST',
+      url: '/api/index?__apiPath=auth/login',
+      body: { username: 'owner@lazord.om', password: 'SeasonalPass!2026' },
+      preParsedBody: true,
+    });
+    assert.equal(login.statusCode, 200);
+    const { token } = login.json<{ token: string }>();
+
+    // Reject unknown theme IDs
+    const invalidTheme = await invokeVercelApi({
+      method: 'PUT',
+      url: '/api/index?__apiPath=admin/seasonal-theme',
+      headers: { authorization: `Bearer ${token}` },
+      body: { seasonalTheme: 'black_friday' },
+      preParsedBody: true,
+    });
+    assert.equal(invalidTheme.statusCode, 400);
+
+    // Persist and verify each supported seasonal theme
+    for (const theme of ['ramadan', 'eid_fitr', 'eid_adha', 'oman_national_day', 'default']) {
+      const saveRes = await invokeVercelApi({
+        method: 'PUT',
+        url: '/api/index?__apiPath=admin/seasonal-theme',
+        headers: { authorization: `Bearer ${token}` },
+        body: { seasonalTheme: theme },
+        preParsedBody: true,
+      });
+      assert.equal(saveRes.statusCode, 200);
+      assert.equal(
+        saveRes.json<{ seasonalTheme: string; settings: { seasonalTheme: string } }>().seasonalTheme,
+        theme
+      );
+
+      const sfAfter = await invokeVercelApi({
+        method: 'GET',
+        url: '/api/index?__apiPath=storefront',
+      });
+      assert.equal(sfAfter.statusCode, 200);
+      assert.equal(
+        sfAfter.json<{ settings: { seasonalTheme: string } }>().settings.seasonalTheme,
+        theme
+      );
+    }
+  } finally {
+    resetTestVercelTmpData();
+    if (prevVercel === undefined) delete process.env.VERCEL;
+    else process.env.VERCEL = prevVercel;
+    if (prevUser === undefined) delete process.env.LAZORD_ADMIN_USERNAME;
+    else process.env.LAZORD_ADMIN_USERNAME = prevUser;
+    if (prevPass === undefined) delete process.env.LAZORD_ADMIN_PASSWORD;
+    else process.env.LAZORD_ADMIN_PASSWORD = prevPass;
+  }
+});
+

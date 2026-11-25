@@ -12,6 +12,7 @@ import {
   Plus,
   Receipt,
   Settings,
+  Sparkles,
   Tag,
   Trash2,
   Volume2,
@@ -27,6 +28,12 @@ import {
 import { playOrderChime, unlockOrderAudioContext } from '../lib/soundChime';
 import { readImageFileAsUploadDataUrl } from '../lib/imageUpload';
 import {
+  SEASONAL_THEME_OPTIONS,
+  getSeasonalThemeOption,
+  normalizeSeasonalTheme,
+  type SeasonalThemeId,
+} from '../lib/seasonalTheme';
+import {
   formatOmr,
   getCategoryLabelAr,
 } from '../lib/storeLogic';
@@ -34,6 +41,12 @@ import { storeRepository, UnauthorizedError } from '../services/storeRepository'
 import { BrandLogo } from './BrandLogo';
 import { OmrPrice } from './OmrPrice';
 import { SafeStoreImage } from './SafeStoreImage';
+import {
+  SeasonalGreetingBanner,
+  SeasonalHeroDecorations,
+  SeasonalPageCanvas,
+  SeasonalSectionDivider,
+} from './SeasonalDecorations';
 import {
   ORDER_STATUS_LIST,
   type AdminDashboardData,
@@ -45,6 +58,7 @@ import {
 } from '../types/store';
 
 interface AdminDashboardProps {
+  seasonalTheme?: SeasonalThemeId;
   onLogout: () => void;
   onUnauthorized: () => void;
   onExitToStore: () => void;
@@ -66,6 +80,7 @@ function readInitialSoundMuted(): boolean {
 }
 
 export function AdminDashboard({
+  seasonalTheme,
   onLogout,
   onUnauthorized,
   onExitToStore,
@@ -112,6 +127,10 @@ export function AdminDashboard({
   const [brandBio, setBrandBio] = useState('');
   const [savingSettings, setSavingSettings] = useState(false);
 
+  // Seasonal store decorations state
+  const [selectedSeasonalTheme, setSelectedSeasonalTheme] = useState<SeasonalThemeId>('default');
+  const [savingSeasonalTheme, setSavingSeasonalTheme] = useState(false);
+
   // Admin password change form state
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -152,6 +171,7 @@ export function AdminDashboard({
           setBankLabel(res.settings.bankAccountLabel);
           setWhatsappNum(res.settings.whatsappNumber);
           setBrandBio(res.settings.brandBio);
+          setSelectedSeasonalTheme(normalizeSeasonalTheme(res.settings.seasonalTheme));
         }
 
         if (newlyArrived.length > 0) {
@@ -474,6 +494,24 @@ export function AdminDashboard({
     }
   };
 
+  const handleSaveSeasonalTheme = async (targetTheme: SeasonalThemeId = selectedSeasonalTheme) => {
+    setSelectedSeasonalTheme(targetTheme);
+    setSavingSeasonalTheme(true);
+    setError(null);
+    try {
+      const updated = await storeRepository.updateSeasonalTheme(targetTheme);
+      setData((prev) => (prev ? { ...prev, settings: updated } : prev));
+      setSelectedSeasonalTheme(normalizeSeasonalTheme(updated.seasonalTheme));
+      onStorefrontUpdated();
+      const option = getSeasonalThemeOption(updated.seasonalTheme);
+      showToast(`تم تفعيل «${option.titleAr}» في واجهة المتجر بنجاح.`);
+    } catch (err) {
+      handleAdminError(err, 'تعذر حفظ وتفعيل زينة المتجر.');
+    } finally {
+      setSavingSeasonalTheme(false);
+    }
+  };
+
   const handleChangePassword = async (e: FormEvent) => {
     e.preventDefault();
     setPasswordError(null);
@@ -527,23 +565,31 @@ export function AdminDashboard({
     onLogout();
   };
 
+  const activeSeasonalTheme = normalizeSeasonalTheme(
+    data?.settings.seasonalTheme ?? seasonalTheme
+  );
+
   return (
-    <div className="min-h-screen bg-[#FAF8F4] text-[#181715]">
+    <div className="min-h-screen bg-[#FAF8F4] text-[#181715] overflow-x-clip">
+      <SeasonalGreetingBanner theme={activeSeasonalTheme} />
+      <SeasonalPageCanvas theme={activeSeasonalTheme} variant="admin" />
+
       {/* Protected Dashboard Header */}
-      <header className="sticky top-0 z-30 bg-[#141311] text-[#FAF8F4] border-b border-[#2D2923]">
-        <div className="max-w-[1320px] mx-auto px-4 sm:px-6 lg:px-8 h-[72px] flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
+      <header className="sticky top-0 z-30 overflow-hidden bg-[#141311] text-[#FAF8F4] border-b border-[#2D2923]">
+        <SeasonalHeroDecorations theme={activeSeasonalTheme} compact />
+        <div className="relative z-10 max-w-[1320px] mx-auto px-3 sm:px-6 lg:px-8 min-h-[68px] sm:h-[72px] py-2 sm:py-0 flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 sm:gap-4">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <BrandLogo
               variant="dark"
-              className="w-14 h-14 shrink-0"
+              className="w-10 h-10 sm:w-14 sm:h-14 shrink-0"
               imgClassName="scale-[1.08]"
             />
-            <span className="font-editorial text-xl font-bold text-[#D4B774] whitespace-nowrap">
+            <span className="font-editorial text-base sm:text-xl font-bold text-[#D4B774] truncate">
               لوحة تحكم صاحب البراند
             </span>
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0 ms-auto">
             <button
               type="button"
               onClick={handleToggleSound}
@@ -551,7 +597,7 @@ export function AdminDashboard({
               aria-label={soundMuted ? 'التنبيه الصوتي: مكتوم' : 'التنبيه الصوتي: مفعّل'}
               data-testid="sound-alert-toggle"
               title={soundMuted ? 'تفعيل التنبيه الصوتي للطلبات الجديدة' : 'كتم التنبيه الصوتي'}
-              className={`inline-flex items-center gap-1.5 px-3 py-2 min-h-[40px] text-xs font-medium rounded-lg border transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+              className={`inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 min-h-[38px] sm:min-h-[40px] text-xs font-medium rounded-lg border transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
                 soundMuted
                   ? 'border-[#383229] text-[#A8A092] hover:text-white'
                   : 'border-[#B59449]/60 bg-[#B59449]/15 text-[#E5C983] hover:bg-[#B59449]/25'
@@ -569,7 +615,7 @@ export function AdminDashboard({
             <button
               type="button"
               onClick={onExitToStore}
-              className="px-3.5 py-2 min-h-[40px] text-xs sm:text-sm font-medium text-[#DFD6C3] hover:text-white border border-[#383229] rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+              className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 min-h-[38px] sm:min-h-[40px] text-xs sm:text-sm font-medium text-[#DFD6C3] hover:text-white border border-[#383229] rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer"
             >
               معاينة المتجر
             </button>
@@ -577,16 +623,16 @@ export function AdminDashboard({
               type="button"
               onClick={handleLogoutClick}
               data-testid="owner-logout-btn"
-              className="inline-flex items-center gap-2 px-4 py-2 min-h-[40px] text-xs sm:text-sm font-semibold bg-[#B59449] hover:bg-[#C6A558] text-[#141311] rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+              className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 min-h-[38px] sm:min-h-[40px] text-xs sm:text-sm font-semibold bg-[#B59449] hover:bg-[#C6A558] text-[#141311] rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer"
             >
-              <LogOut className="w-4 h-4" aria-hidden="true" />
+              <LogOut className="w-3.5 h-3.5 sm:w-4 sm:h-4" aria-hidden="true" />
               <span>تسجيل الخروج</span>
             </button>
           </div>
         </div>
       </header>
 
-      <main className="max-w-[1320px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      <main className="relative z-10 max-w-[1320px] mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-8 space-y-6 sm:space-y-8">
         {feedback && (
           <div
             role="status"
@@ -665,39 +711,41 @@ export function AdminDashboard({
               </section>
             )}
 
-            {/* 4 Live KPI Cards */}
-            <section aria-label="إحصائيات المبيعات والمتجر" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="bg-white border border-[#E7E0D2] rounded-xl p-5 space-y-1.5">
-                <p className="text-xs font-medium text-[#615B52]">إجمالي المبيعات</p>
+            {/* 4 Live KPI Cards (Balanced 2x2 on portrait mobile, 4 across on desktop) */}
+            <section aria-label="إحصائيات المبيعات والمتجر" className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+              <div className="bg-white border border-[#E7E0D2] rounded-xl p-3.5 sm:p-5 space-y-1 sm:space-y-1.5">
+                <p className="text-[11px] sm:text-xs font-medium text-[#615B52]">إجمالي المبيعات</p>
                 <p
                   data-testid="kpi-revenue"
-                  className="text-2xl font-bold text-[#181715]"
+                  className="text-lg sm:text-2xl font-bold text-[#181715]"
                 >
                   <OmrPrice amount={data.analytics.totalSalesRevenue} />
                 </p>
               </div>
 
-              <div className="bg-white border border-[#E7E0D2] rounded-xl p-5 space-y-1.5">
-                <p className="text-xs font-medium text-[#615B52]">عدد الطلبات</p>
+              <div className="bg-white border border-[#E7E0D2] rounded-xl p-3.5 sm:p-5 space-y-1 sm:space-y-1.5">
+                <p className="text-[11px] sm:text-xs font-medium text-[#615B52]">عدد الطلبات</p>
                 <p
                   data-testid="kpi-orders"
-                  className="text-2xl font-mono font-bold text-[#181715] tabular-nums"
+                  className="text-lg sm:text-2xl font-mono font-bold text-[#181715] tabular-nums"
                 >
                   {data.analytics.totalOrders}
                 </p>
               </div>
 
               <div
-                className={`rounded-xl p-5 space-y-1.5 border ${
+                className={`rounded-xl p-3.5 sm:p-5 space-y-1 sm:space-y-1.5 border ${
                   data.analytics.pendingOrders > 0
                     ? 'bg-amber-50/70 border-amber-300'
                     : 'bg-white border-[#E7E0D2]'
                 }`}
               >
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-xs font-medium text-[#615B52]">الطلبات الجديدة / قيد المراجعة</p>
+                <div className="flex items-start sm:items-center justify-between gap-1.5 sm:gap-2">
+                  <p className="text-[11px] sm:text-xs font-medium text-[#615B52] leading-snug">
+                    الطلبات الجديدة / قيد المراجعة
+                  </p>
                   <Clock
-                    className={`w-4 h-4 ${
+                    className={`w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 ${
                       data.analytics.pendingOrders > 0 ? 'text-amber-700' : 'text-[#8D867A]'
                     }`}
                     aria-hidden="true"
@@ -705,17 +753,17 @@ export function AdminDashboard({
                 </div>
                 <p
                   data-testid="kpi-pending"
-                  className="text-2xl font-mono font-bold text-[#8E6F2D] tabular-nums"
+                  className="text-lg sm:text-2xl font-mono font-bold text-[#8E6F2D] tabular-nums"
                 >
                   {data.analytics.pendingOrders}
                 </p>
               </div>
 
-              <div className="bg-white border border-[#E7E0D2] rounded-xl p-5 space-y-1.5">
-                <p className="text-xs font-medium text-[#615B52]">عدد زيارات المتجر</p>
+              <div className="bg-white border border-[#E7E0D2] rounded-xl p-3.5 sm:p-5 space-y-1 sm:space-y-1.5">
+                <p className="text-[11px] sm:text-xs font-medium text-[#615B52]">عدد زيارات المتجر</p>
                 <p
                   data-testid="kpi-visits"
-                  className="text-2xl font-mono font-bold text-[#181715] tabular-nums"
+                  className="text-lg sm:text-2xl font-mono font-bold text-[#181715] tabular-nums"
                 >
                   {data.analytics.totalStoreVisits}
                 </p>
@@ -726,7 +774,7 @@ export function AdminDashboard({
             <div
               role="tablist"
               aria-label="أقسام لوحة التحكم"
-              className="flex flex-wrap items-center gap-2 border-b border-[#E7E0D2] pb-3"
+              className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 border-b border-[#E7E0D2] pb-3"
             >
               {(
                 [
@@ -747,18 +795,18 @@ export function AdminDashboard({
                     role="tab"
                     aria-selected={active}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`inline-flex items-center gap-2 px-4 py-2.5 min-h-[42px] text-sm font-medium rounded-lg transition-colors whitespace-nowrap cursor-pointer ${
+                    className={`inline-flex items-center justify-center sm:justify-start gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 min-h-[44px] sm:min-h-[42px] text-xs sm:text-sm font-medium rounded-lg transition-colors text-center sm:text-start cursor-pointer ${
                       active
                         ? 'bg-[#141311] text-[#FAF8F4]'
                         : 'bg-white border border-[#E7E0D2] text-[#4F4A42] hover:text-[#181715]'
                     }`}
                   >
-                    <Icon className="w-4 h-4" aria-hidden="true" />
-                    <span>{tab.label}</span>
+                    <Icon className="w-4 h-4 shrink-0" aria-hidden="true" />
+                    <span className="truncate">{tab.label}</span>
                     {showPendingCount && (
                       <span
                         data-testid="orders-tab-pending-badge"
-                        className="inline-flex items-center justify-center min-w-[22px] h-5 px-1.5 text-xs font-mono font-bold tabular-nums rounded-full bg-[#B59449] text-[#141311]"
+                        className="inline-flex items-center justify-center min-w-[20px] sm:min-w-[22px] h-5 px-1.5 text-xs font-mono font-bold tabular-nums rounded-full bg-[#B59449] text-[#141311] shrink-0"
                       >
                         {data.analytics.pendingOrders}
                       </span>
@@ -951,7 +999,7 @@ export function AdminDashboard({
                             </button>
                           </div>
 
-                          <div className="flex flex-wrap items-center gap-2">
+                          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                             <label htmlFor={`status-${order.id}`} className="sr-only">
                               تحديث حالة الطلب {order.orderNumber}
                             </label>
@@ -961,7 +1009,7 @@ export function AdminDashboard({
                               onChange={(e) =>
                                 handleStatusChange(order.id, e.target.value as OrderStatus)
                               }
-                              className="px-3 py-2 min-h-[40px] bg-[#FAF8F4] border border-[#D7CCB8] rounded-lg text-xs font-medium text-[#181715] focus:outline-none focus:border-[#8E6F2D]"
+                              className="w-full sm:w-auto px-3 py-2 min-h-[42px] sm:min-h-[40px] bg-[#FAF8F4] border border-[#D7CCB8] rounded-lg text-sm sm:text-xs font-medium text-[#181715] focus:outline-none focus:border-[#8E6F2D]"
                             >
                               {ORDER_STATUS_LIST.map((st) => (
                                 <option key={st} value={st}>
@@ -1015,7 +1063,7 @@ export function AdminDashboard({
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label htmlFor="prod-cat" className="block text-xs font-medium text-[#4F4A42] mb-1">
                         التصنيف
@@ -1024,7 +1072,7 @@ export function AdminDashboard({
                         id="prod-cat"
                         value={prodCategory}
                         onChange={(e) => setProdCategory(e.target.value as ProductCategory)}
-                        className="w-full px-3 py-2 min-h-[42px] bg-[#FAF8F4] border border-[#D7CCB8] rounded-lg text-sm"
+                        className="w-full px-3 py-2 min-h-[44px] sm:min-h-[42px] bg-[#FAF8F4] border border-[#D7CCB8] rounded-lg text-base sm:text-sm"
                       >
                         <option value="perfume">عطور</option>
                         <option value="bukhoor">بخور</option>
@@ -1044,7 +1092,7 @@ export function AdminDashboard({
                         value={prodPrice}
                         onChange={(e) => setProdPrice(e.target.value)}
                         placeholder="25.000"
-                        className="w-full px-3.5 py-2 min-h-[42px] bg-[#FAF8F4] border border-[#D7CCB8] rounded-lg text-sm font-mono"
+                        className="w-full px-3.5 py-2 min-h-[44px] sm:min-h-[42px] bg-[#FAF8F4] border border-[#D7CCB8] rounded-lg text-base sm:text-sm font-mono"
                       />
                     </div>
                   </div>
@@ -1248,7 +1296,7 @@ export function AdminDashboard({
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label htmlFor="new-promo-type" className="block text-xs font-medium text-[#4F4A42] mb-1">
                         نوع الخصم
@@ -1257,7 +1305,7 @@ export function AdminDashboard({
                         id="new-promo-type"
                         value={promoType}
                         onChange={(e) => setPromoType(e.target.value as DiscountType)}
-                        className="w-full px-3 py-2 min-h-[42px] bg-[#FAF8F4] border border-[#D7CCB8] rounded-lg text-sm"
+                        className="w-full px-3 py-2 min-h-[44px] sm:min-h-[42px] bg-[#FAF8F4] border border-[#D7CCB8] rounded-lg text-base sm:text-sm"
                       >
                         <option value="percentage">نسبة مئوية (%)</option>
                         <option value="fixed">مبلغ ثابت (ر.ع)</option>
@@ -1277,7 +1325,7 @@ export function AdminDashboard({
                         value={promoValue}
                         onChange={(e) => setPromoValue(e.target.value)}
                         placeholder="15"
-                        className="w-full px-3.5 py-2 min-h-[42px] bg-[#FAF8F4] border border-[#D7CCB8] rounded-lg text-sm font-mono"
+                        className="w-full px-3.5 py-2 min-h-[44px] sm:min-h-[42px] bg-[#FAF8F4] border border-[#D7CCB8] rounded-lg text-base sm:text-sm font-mono"
                       />
                     </div>
                   </div>
@@ -1338,11 +1386,141 @@ export function AdminDashboard({
 
             {/* TAB 4: Store & Payment Settings */}
             {activeTab === 'settings' && (
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                <section className="lg:col-span-7 bg-white border border-[#E7E0D2] rounded-xl p-6">
-                  <h2 className="text-base font-bold text-[#181715] mb-4">
-                    إعدادات التحويل البنكي والهوية
-                  </h2>
+              <div className="space-y-6">
+                {/* Seasonal Store Decorations Section */}
+                <section
+                  aria-label="زينة المتجر والمناسبات"
+                  data-testid="seasonal-theme-section"
+                  className="bg-white border border-[#E7E0D2] rounded-xl p-6 space-y-5"
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-[#F2EDE3]">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-[#141311] text-[#D4B774] flex items-center justify-center shrink-0">
+                        <Sparkles className="w-5 h-5" aria-hidden="true" />
+                      </div>
+                      <div>
+                        <h2 className="text-base sm:text-lg font-bold text-[#181715]">
+                          زينة المتجر والمناسبات
+                        </h2>
+                        <p className="text-xs text-[#615B52]">
+                          اختر الهوية الموسمية ليتم تطبيقها فوراً على واجهة المتجر لجميع الزوار
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="text-xs font-medium text-[#4F4A42]">
+                      الزينة النشطة حالياً:{' '}
+                      <span
+                        data-testid="active-seasonal-theme-label"
+                        className="font-bold text-[#8E6F2D]"
+                      >
+                        {getSeasonalThemeOption(data.settings.seasonalTheme).titleAr}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Single-Click Occasion Options */}
+                  <div
+                    role="radiogroup"
+                    aria-label="اختيار زينة المتجر والمناسبات"
+                    className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3"
+                  >
+                    {SEASONAL_THEME_OPTIONS.map((option) => {
+                      const activeSaved =
+                        normalizeSeasonalTheme(data.settings.seasonalTheme) === option.id;
+                      const selected = selectedSeasonalTheme === option.id;
+                      return (
+                        <button
+                          key={option.id}
+                          type="button"
+                          role="radio"
+                          aria-checked={selected}
+                          data-testid={`seasonal-theme-option-${option.id}`}
+                          onClick={() => setSelectedSeasonalTheme(option.id)}
+                          className={`text-start p-4 rounded-xl border transition-all cursor-pointer flex flex-col justify-between gap-3 ${
+                            selected
+                              ? 'bg-[#FAF6EC] border-[#8E6F2D] ring-1 ring-[#8E6F2D]'
+                              : 'bg-[#FAF8F4] border-[#E2D9C5] hover:border-[#B59449]'
+                          }`}
+                        >
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-1.5">
+                                {option.previewSwatches.map((swatch, idx) => (
+                                  <span
+                                    key={`${option.id}-${idx}`}
+                                    aria-hidden="true"
+                                    className="w-4 h-4 rounded-full border border-black/15 shrink-0"
+                                    style={{ backgroundColor: swatch }}
+                                  />
+                                ))}
+                              </div>
+                              {activeSaved && (
+                                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#15803D]">
+                                  <Check className="w-3.5 h-3.5" aria-hidden="true" />
+                                  <span>مفعّل</span>
+                                </span>
+                              )}
+                            </div>
+
+                            <h3 className="text-sm font-bold text-[#181715] leading-snug">
+                              {option.titleAr}
+                            </h3>
+                            <p className="text-xs text-[#615B52] leading-relaxed">
+                              {option.subtitleAr}
+                            </p>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Live Miniature Storefront Preview + Activate/Save Action */}
+                  <div className="pt-2 space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <p className="text-xs font-medium text-[#4F4A42]">
+                        معاينة الزينة المختارة:{' '}
+                        <span className="font-bold text-[#181715]">
+                          {getSeasonalThemeOption(selectedSeasonalTheme).titleAr}
+                        </span>
+                      </p>
+
+                      <button
+                        type="button"
+                        disabled={savingSeasonalTheme}
+                        data-testid="save-seasonal-theme-btn"
+                        onClick={() => void handleSaveSeasonalTheme(selectedSeasonalTheme)}
+                        className="inline-flex items-center justify-center gap-2 px-5 py-2.5 min-h-[44px] bg-[#141311] hover:bg-[#8E6F2D] disabled:opacity-60 text-[#FAF8F4] text-sm font-semibold rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+                      >
+                        <Check className="w-4 h-4 text-[#D4B774]" aria-hidden="true" />
+                        <span>
+                          {savingSeasonalTheme ? 'جاري التفعيل...' : 'حفظ وتفعيل الزينة'}
+                        </span>
+                      </button>
+                    </div>
+
+                    <div
+                      aria-label="معاينة مظهر الزينة المختارة"
+                      className="rounded-xl overflow-hidden border border-[#2D2923] bg-[#141311]"
+                    >
+                      <SeasonalGreetingBanner theme={selectedSeasonalTheme} />
+                      <div className="relative h-28 overflow-hidden flex items-center justify-center px-4 text-center">
+                        <SeasonalHeroDecorations theme={selectedSeasonalTheme} />
+                        <p className="relative z-10 text-xs sm:text-sm font-medium text-[#DDD6C8]">
+                          {selectedSeasonalTheme === 'default'
+                            ? 'الواجهة الكلاسيكية الأساسية لدار LAZORD | لازورد'
+                            : getSeasonalThemeOption(selectedSeasonalTheme).bannerTextAr}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                  <section className="lg:col-span-7 bg-white border border-[#E7E0D2] rounded-xl p-4 sm:p-6">
+                    <h2 className="text-base font-bold text-[#181715] mb-4">
+                      إعدادات التحويل البنكي والهوية
+                    </h2>
                   <form onSubmit={handleSaveSettings} className="space-y-4">
                     <div>
                       <label htmlFor="settings-bank-phone" className="block text-xs font-medium text-[#4F4A42] mb-1">
@@ -1355,7 +1533,7 @@ export function AdminDashboard({
                         required
                         value={bankPhone}
                         onChange={(e) => setBankPhone(e.target.value)}
-                        className="w-full px-3.5 py-2.5 min-h-[42px] bg-[#FAF8F4] border border-[#D7CCB8] rounded-lg text-sm font-mono"
+                        className="w-full px-3.5 py-2.5 min-h-[44px] bg-[#FAF8F4] border border-[#D7CCB8] rounded-lg text-base sm:text-sm font-mono"
                       />
                     </div>
 
@@ -1368,7 +1546,7 @@ export function AdminDashboard({
                         type="text"
                         value={bankLabel}
                         onChange={(e) => setBankLabel(e.target.value)}
-                        className="w-full px-3.5 py-2.5 min-h-[42px] bg-[#FAF8F4] border border-[#D7CCB8] rounded-lg text-sm"
+                        className="w-full px-3.5 py-2.5 min-h-[44px] bg-[#FAF8F4] border border-[#D7CCB8] rounded-lg text-base sm:text-sm"
                       />
                     </div>
 
@@ -1383,7 +1561,7 @@ export function AdminDashboard({
                         required
                         value={whatsappNum}
                         onChange={(e) => setWhatsappNum(e.target.value)}
-                        className="w-full px-3.5 py-2.5 min-h-[42px] bg-[#FAF8F4] border border-[#D7CCB8] rounded-lg text-sm font-mono"
+                        className="w-full px-3.5 py-2.5 min-h-[44px] bg-[#FAF8F4] border border-[#D7CCB8] rounded-lg text-base sm:text-sm font-mono"
                       />
                     </div>
 
@@ -1396,14 +1574,14 @@ export function AdminDashboard({
                         rows={4}
                         value={brandBio}
                         onChange={(e) => setBrandBio(e.target.value)}
-                        className="w-full px-3.5 py-2.5 bg-[#FAF8F4] border border-[#D7CCB8] rounded-lg text-sm leading-relaxed"
+                        className="w-full px-3.5 py-2.5 bg-[#FAF8F4] border border-[#D7CCB8] rounded-lg text-base sm:text-sm leading-relaxed"
                       />
                     </div>
 
                     <button
                       type="submit"
                       disabled={savingSettings}
-                      className="px-6 py-3 min-h-[44px] bg-[#141311] hover:bg-[#8E6F2D] text-[#FAF8F4] text-sm font-semibold rounded-lg transition-colors cursor-pointer"
+                      className="w-full sm:w-auto px-6 py-3 min-h-[46px] sm:min-h-[44px] bg-[#141311] hover:bg-[#8E6F2D] text-[#FAF8F4] text-sm font-semibold rounded-lg transition-colors cursor-pointer"
                     >
                       {savingSettings ? 'جاري الحفظ...' : 'حفظ الإعدادات'}
                     </button>
@@ -1413,7 +1591,7 @@ export function AdminDashboard({
                 <section
                   aria-label="تغيير كلمة المرور"
                   data-testid="change-password-section"
-                  className="lg:col-span-5 bg-white border border-[#E7E0D2] rounded-xl p-6 space-y-4"
+                  className="lg:col-span-5 bg-white border border-[#E7E0D2] rounded-xl p-4 sm:p-6 space-y-4"
                 >
                   <div className="flex items-center gap-2.5 pb-3 border-b border-[#F2EDE3]">
                     <div className="w-9 h-9 rounded-lg bg-[#141311] text-[#B59449] flex items-center justify-center shrink-0">
@@ -1445,7 +1623,7 @@ export function AdminDashboard({
                           value={currentPassword}
                           onChange={(e) => setCurrentPassword(e.target.value)}
                           placeholder="أدخل كلمة المرور الحالية"
-                          className="w-full pl-3.5 pr-11 py-2.5 min-h-[42px] bg-[#FAF8F4] border border-[#D7CCB8] rounded-lg text-sm text-[#181715] focus:outline-none focus:border-[#8E6F2D]"
+                          className="w-full pl-3.5 pr-12 py-2.5 min-h-[44px] bg-[#FAF8F4] border border-[#D7CCB8] rounded-lg text-base sm:text-sm text-[#181715] focus:outline-none focus:border-[#8E6F2D]"
                         />
                         <button
                           type="button"
@@ -1457,7 +1635,7 @@ export function AdminDashboard({
                           }
                           aria-pressed={showCurrentPassword}
                           data-testid="toggle-current-password-visibility"
-                          className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 rounded-md text-[#8E6F2D] hover:text-[#141311] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#B59449] transition-colors cursor-pointer"
+                          className="absolute right-1.5 top-1/2 -translate-y-1/2 p-2 min-w-[40px] min-h-[40px] inline-flex items-center justify-center rounded-md text-[#8E6F2D] hover:text-[#141311] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#B59449] transition-colors cursor-pointer"
                         >
                           {showCurrentPassword ? (
                             <EyeOff className="w-4 h-4" aria-hidden="true" />
@@ -1485,7 +1663,7 @@ export function AdminDashboard({
                           value={newPassword}
                           onChange={(e) => setNewPassword(e.target.value)}
                           placeholder="6 أحرف فأكثر"
-                          className="w-full pl-3.5 pr-11 py-2.5 min-h-[42px] bg-[#FAF8F4] border border-[#D7CCB8] rounded-lg text-sm text-[#181715] focus:outline-none focus:border-[#8E6F2D]"
+                          className="w-full pl-3.5 pr-12 py-2.5 min-h-[44px] bg-[#FAF8F4] border border-[#D7CCB8] rounded-lg text-base sm:text-sm text-[#181715] focus:outline-none focus:border-[#8E6F2D]"
                         />
                         <button
                           type="button"
@@ -1497,7 +1675,7 @@ export function AdminDashboard({
                           }
                           aria-pressed={showNewPassword}
                           data-testid="toggle-new-password-visibility"
-                          className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 rounded-md text-[#8E6F2D] hover:text-[#141311] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#B59449] transition-colors cursor-pointer"
+                          className="absolute right-1.5 top-1/2 -translate-y-1/2 p-2 min-w-[40px] min-h-[40px] inline-flex items-center justify-center rounded-md text-[#8E6F2D] hover:text-[#141311] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#B59449] transition-colors cursor-pointer"
                         >
                           {showNewPassword ? (
                             <EyeOff className="w-4 h-4" aria-hidden="true" />
@@ -1525,7 +1703,7 @@ export function AdminDashboard({
                           value={confirmPassword}
                           onChange={(e) => setConfirmPassword(e.target.value)}
                           placeholder="أعد إدخال كلمة المرور الجديدة"
-                          className="w-full pl-3.5 pr-11 py-2.5 min-h-[42px] bg-[#FAF8F4] border border-[#D7CCB8] rounded-lg text-sm text-[#181715] focus:outline-none focus:border-[#8E6F2D]"
+                          className="w-full pl-3.5 pr-12 py-2.5 min-h-[44px] bg-[#FAF8F4] border border-[#D7CCB8] rounded-lg text-base sm:text-sm text-[#181715] focus:outline-none focus:border-[#8E6F2D]"
                         />
                         <button
                           type="button"
@@ -1537,7 +1715,7 @@ export function AdminDashboard({
                           }
                           aria-pressed={showConfirmPassword}
                           data-testid="toggle-confirm-password-visibility"
-                          className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 rounded-md text-[#8E6F2D] hover:text-[#141311] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#B59449] transition-colors cursor-pointer"
+                          className="absolute right-1.5 top-1/2 -translate-y-1/2 p-2 min-w-[40px] min-h-[40px] inline-flex items-center justify-center rounded-md text-[#8E6F2D] hover:text-[#141311] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#B59449] transition-colors cursor-pointer"
                         >
                           {showConfirmPassword ? (
                             <EyeOff className="w-4 h-4" aria-hidden="true" />
@@ -1572,14 +1750,16 @@ export function AdminDashboard({
                       type="submit"
                       disabled={savingPassword}
                       data-testid="save-password-btn"
-                      className="w-full px-6 py-3 min-h-[44px] bg-[#141311] hover:bg-[#8E6F2D] disabled:opacity-60 text-[#FAF8F4] border border-[#B59449]/40 text-sm font-semibold rounded-lg transition-colors cursor-pointer"
+                      className="w-full px-6 py-3 min-h-[46px] bg-[#141311] hover:bg-[#8E6F2D] disabled:opacity-60 text-[#FAF8F4] border border-[#B59449]/40 text-sm font-semibold rounded-lg transition-colors cursor-pointer"
                     >
                       {savingPassword ? 'جاري التحديث...' : 'حفظ كلمة المرور الجديدة'}
                     </button>
                   </form>
                 </section>
+                </div>
               </div>
             )}
+            <SeasonalSectionDivider theme={activeSeasonalTheme} className="pt-2" />
           </>
         )}
       </main>
@@ -1590,31 +1770,31 @@ export function AdminDashboard({
           role="dialog"
           aria-modal="true"
           aria-labelledby="receipt-modal-title"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/65 backdrop-blur-xs"
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/65 backdrop-blur-xs"
         >
-          <div className="w-full max-w-lg bg-white border border-[#DFD6C3] rounded-2xl overflow-hidden shadow-2xl">
-            <div className="px-5 py-3.5 bg-[#141311] text-[#FAF8F4] flex items-center justify-between">
-              <h3 id="receipt-modal-title" className="text-sm font-bold">
+          <div className="w-full max-w-lg max-h-[90dvh] flex flex-col bg-white border border-[#DFD6C3] rounded-2xl overflow-hidden shadow-2xl">
+            <div className="px-4 sm:px-5 py-3.5 bg-[#141311] text-[#FAF8F4] flex items-center justify-between gap-2 shrink-0">
+              <h3 id="receipt-modal-title" className="text-xs sm:text-sm font-bold truncate">
                 إيصال الدفع — {receiptOrder.orderNumber} ({receiptOrder.customerName})
               </h3>
               <button
                 type="button"
                 onClick={() => setReceiptOrder(null)}
                 aria-label="إغلاق صورة الإيصال"
-                className="p-1.5 rounded-lg text-[#CFC7B8] hover:text-white cursor-pointer"
+                className="p-2 min-w-[40px] min-h-[40px] inline-flex items-center justify-center rounded-lg text-[#CFC7B8] hover:text-white cursor-pointer shrink-0"
               >
                 <X className="w-5 h-5" aria-hidden="true" />
               </button>
             </div>
-            <div className="p-5 bg-[#FAF8F4] flex flex-col items-center gap-4">
+            <div className="p-4 sm:p-5 bg-[#FAF8F4] overflow-y-auto overscroll-contain flex flex-col items-center gap-4">
               <SafeStoreImage
                 src={receiptOrder.receiptImageUrl}
                 alt={`إيصال التحويل البنكي للطلب ${receiptOrder.orderNumber}`}
                 fallbackClassName="w-full h-56 rounded-lg border border-[#E7E0D2]"
                 fallbackLabel="تعذر تحميل صورة الإيصال"
-                className="max-h-[65vh] w-auto object-contain rounded-lg border border-[#E7E0D2] bg-white"
+                className="max-h-[60dvh] w-auto object-contain rounded-lg border border-[#E7E0D2] bg-white"
               />
-              <div className="w-full flex items-center justify-between text-xs text-[#615B52]">
+              <div className="w-full flex flex-wrap items-center justify-between gap-2 text-xs text-[#615B52]">
                 <span>المبلغ المطلوب: {formatOmr(receiptOrder.finalTotal)}</span>
                 <span className="font-mono">{receiptOrder.trackingNumber}</span>
               </div>

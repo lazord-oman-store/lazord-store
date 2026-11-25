@@ -6,8 +6,14 @@ import { ProductCatalog, type CatalogFilter } from './components/ProductCatalog'
 import { StoreFooter } from './components/StoreFooter';
 import { StoreHeader } from './components/StoreHeader';
 import { StoreHero } from './components/StoreHero';
+import {
+  SeasonalGreetingBanner,
+  SeasonalPageCanvas,
+  SeasonalSectionDivider,
+} from './components/SeasonalDecorations';
 import { TrackOrderModal } from './components/TrackOrderModal';
 import { INITIAL_SEED_STATE } from './lib/seedData';
+import { normalizeSeasonalTheme } from './lib/seasonalTheme';
 import { isProductOutOfStock } from './lib/storeLogic';
 import { storeRepository } from './services/storeRepository';
 import type { CartItem, Product, StoreSettings } from './types/store';
@@ -168,6 +174,8 @@ export default function App() {
     setAdminMode(false);
   };
 
+  const activeSeasonalTheme = normalizeSeasonalTheme(settings.seasonalTheme);
+
   // --- Strict Protected Owner Route ---
   if (adminMode) {
     if (checkingSession) {
@@ -182,6 +190,7 @@ export default function App() {
       return (
         <OwnerLoginView
           initialNeedsSetup={needsOwnerSetup}
+          seasonalTheme={activeSeasonalTheme}
           onLoginSuccess={() => {
             setNeedsOwnerSetup(false);
             setOwnerAuthenticated(true);
@@ -193,6 +202,7 @@ export default function App() {
 
     return (
       <AdminDashboard
+        seasonalTheme={activeSeasonalTheme}
         onLogout={() => setOwnerAuthenticated(false)}
         onUnauthorized={() => setOwnerAuthenticated(false)}
         onExitToStore={handleExitAdminToStore}
@@ -203,7 +213,9 @@ export default function App() {
 
   // --- Public Customer Storefront ---
   return (
-    <div className="min-h-screen flex flex-col bg-[#FAF8F4] text-[#181715]">
+    <div className="min-h-screen flex flex-col bg-[#FAF8F4] text-[#181715] overflow-x-clip">
+      <SeasonalGreetingBanner theme={activeSeasonalTheme} />
+      <SeasonalPageCanvas theme={activeSeasonalTheme} variant="storefront" />
       <StoreHeader
         cartCount={totalCartCount}
         onOpenCart={() => {
@@ -220,10 +232,13 @@ export default function App() {
       <main className="flex-1">
         <StoreHero
           brandBio={settings.brandBio}
+          seasonalTheme={activeSeasonalTheme}
           onExploreCatalog={() => {
             document.getElementById('catalog')?.scrollIntoView({ behavior: 'smooth' });
           }}
         />
+
+        <SeasonalSectionDivider theme={activeSeasonalTheme} />
 
         {loadingStore ? (
           <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 py-16 grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -246,6 +261,7 @@ export default function App() {
 
       <StoreFooter
         settings={settings}
+        seasonalTheme={activeSeasonalTheme}
         onSecretAdminTrigger={handleSecretAdminTrigger}
       />
 
@@ -253,16 +269,16 @@ export default function App() {
       {addedNotice && (
         <div
           role="status"
-          className="fixed bottom-5 start-5 z-40 px-4 py-3 rounded-xl bg-[#141311] text-[#FAF8F4] border border-[#B59449] shadow-lg flex items-center gap-3 text-sm"
+          className="fixed bottom-4 inset-x-4 sm:inset-x-auto sm:start-5 sm:max-w-md z-40 px-4 py-3 rounded-xl bg-[#141311] text-[#FAF8F4] border border-[#B59449] shadow-lg flex items-center justify-between gap-3 text-xs sm:text-sm"
         >
-          <span>{addedNotice}</span>
+          <span className="leading-snug">{addedNotice}</span>
           <button
             type="button"
             onClick={() => {
               setAddedNotice(null);
               setCartOpen(true);
             }}
-            className="text-xs font-semibold text-[#D4B774] hover:underline cursor-pointer whitespace-nowrap"
+            className="text-xs font-semibold text-[#D4B774] hover:underline cursor-pointer whitespace-nowrap shrink-0"
           >
             عرض السلة
           </button>

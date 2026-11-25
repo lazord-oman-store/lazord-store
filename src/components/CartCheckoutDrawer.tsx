@@ -281,21 +281,21 @@ export function CartCheckoutDrawer({
       aria-labelledby="cart-drawer-title"
       className="fixed inset-0 z-50 flex justify-end bg-black/55 backdrop-blur-xs"
     >
-      <div className="relative w-full max-w-lg bg-[#FAF8F4] h-full shadow-2xl flex flex-col border-s border-[#DFD6C3]">
+      <div className="relative w-full max-w-lg bg-[#FAF8F4] h-[100dvh] max-h-[100dvh] shadow-2xl flex flex-col border-s border-[#DFD6C3] overflow-x-clip">
         {/* Drawer Header */}
-        <div className="px-6 py-4 bg-[#141311] text-[#FAF8F4] flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-3">
+        <div className="px-4 py-3.5 sm:px-6 sm:py-4 bg-[#141311] text-[#FAF8F4] flex items-center justify-between gap-2 shrink-0">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             {step === 'checkout' && (
               <button
                 type="button"
                 onClick={() => setStep('cart')}
                 aria-label="العودة إلى سلة التسوق"
-                className="p-1.5 rounded-lg text-[#CFC7B8] hover:text-white hover:bg-white/10 cursor-pointer"
+                className="p-2 min-w-[40px] min-h-[40px] inline-flex items-center justify-center rounded-lg text-[#CFC7B8] hover:text-white hover:bg-white/10 cursor-pointer shrink-0"
               >
                 <ArrowRight className="w-5 h-5" aria-hidden="true" />
               </button>
             )}
-            <h2 id="cart-drawer-title" className="font-editorial text-xl font-bold">
+            <h2 id="cart-drawer-title" className="font-editorial text-lg sm:text-xl font-bold truncate">
               {step === 'cart' && 'سلة التسوق'}
               {step === 'checkout' && 'إتمام الطلب والتحويل البنكي'}
               {step === 'confirmation' && 'تم استلام طلبك بنجاح'}
@@ -306,14 +306,14 @@ export function CartCheckoutDrawer({
             type="button"
             onClick={handleDrawerClose}
             aria-label="إغلاق السلة"
-            className="p-2 rounded-lg text-[#CFC7B8] hover:text-white hover:bg-white/10 cursor-pointer"
+            className="p-2 min-w-[44px] min-h-[44px] inline-flex items-center justify-center rounded-lg text-[#CFC7B8] hover:text-white hover:bg-white/10 cursor-pointer shrink-0"
           >
             <X className="w-5 h-5" aria-hidden="true" />
           </button>
         </div>
 
         {/* Drawer Content */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto overscroll-contain p-4 sm:p-6">
           {step === 'cart' && (
             <div className="space-y-6">
               {items.length === 0 ? (
@@ -372,7 +372,7 @@ export function CartCheckoutDrawer({
                             type="button"
                             onClick={() => onRemoveItem(item.product.id)}
                             aria-label={`إزالة ${item.product.nameAr}`}
-                            className="p-1.5 text-[#7A7367] hover:text-red-700 transition-colors cursor-pointer"
+                            className="p-2 min-w-[36px] min-h-[36px] inline-flex items-center justify-center text-[#7A7367] hover:text-red-700 transition-colors cursor-pointer"
                           >
                             <Trash2 className="w-4 h-4" aria-hidden="true" />
                           </button>
@@ -382,7 +382,7 @@ export function CartCheckoutDrawer({
                               type="button"
                               onClick={() => onUpdateQty(item.product.id, item.quantity - 1)}
                               aria-label={`إنقاص كمية ${item.product.nameAr}`}
-                              className="p-1.5 text-[#181715] hover:bg-[#EFE9DC] rounded-s-lg cursor-pointer"
+                              className="min-w-[36px] min-h-[36px] inline-flex items-center justify-center text-[#181715] hover:bg-[#EFE9DC] rounded-s-lg cursor-pointer"
                             >
                               <Minus className="w-3.5 h-3.5" aria-hidden="true" />
                             </button>
@@ -393,7 +393,7 @@ export function CartCheckoutDrawer({
                               type="button"
                               onClick={() => onUpdateQty(item.product.id, item.quantity + 1)}
                               aria-label={`زيادة كمية ${item.product.nameAr}`}
-                              className="p-1.5 text-[#181715] hover:bg-[#EFE9DC] rounded-e-lg cursor-pointer"
+                              className="min-w-[36px] min-h-[36px] inline-flex items-center justify-center text-[#181715] hover:bg-[#EFE9DC] rounded-e-lg cursor-pointer"
                             >
                               <Plus className="w-3.5 h-3.5" aria-hidden="true" />
                             </button>
@@ -420,13 +420,13 @@ export function CartCheckoutDrawer({
                         value={promoInput}
                         onChange={(e) => setPromoInput(e.target.value)}
                         placeholder=""
-                        className="flex-1 px-3.5 py-2 min-h-[42px] bg-[#FAF8F4] border border-[#D7CCB8] rounded-lg text-sm font-mono uppercase text-[#181715] focus:outline-none focus:border-[#8E6F2D]"
+                        className="flex-1 min-w-0 px-3.5 py-2 min-h-[44px] bg-[#FAF8F4] border border-[#D7CCB8] rounded-lg text-base sm:text-sm font-mono uppercase text-[#181715] focus:outline-none focus:border-[#8E6F2D]"
                       />
                       {appliedPromo ? (
                         <button
                           type="button"
                           onClick={handleRemovePromo}
-                          className="px-4 py-2 min-h-[42px] text-xs font-medium bg-[#EFE9DC] hover:bg-[#E2D9C5] text-[#181715] rounded-lg cursor-pointer whitespace-nowrap"
+                          className="px-4 py-2 min-h-[44px] text-xs font-medium bg-[#EFE9DC] hover:bg-[#E2D9C5] text-[#181715] rounded-lg cursor-pointer whitespace-nowrap shrink-0"
                         >
                           إلغاء الكود
                         </button>
@@ -435,7 +435,7 @@ export function CartCheckoutDrawer({
                           type="button"
                           onClick={handleApplyPromo}
                           disabled={promoLoading}
-                          className="px-4 py-2 min-h-[42px] text-xs font-medium bg-[#141311] hover:bg-[#8E6F2D] disabled:opacity-60 text-[#FAF8F4] rounded-lg cursor-pointer whitespace-nowrap"
+                          className="px-4 py-2 min-h-[44px] text-xs font-medium bg-[#141311] hover:bg-[#8E6F2D] disabled:opacity-60 text-[#FAF8F4] rounded-lg cursor-pointer whitespace-nowrap shrink-0"
                         >
                           {promoLoading ? 'تحقق...' : 'تطبيق الكود'}
                         </button>
@@ -489,8 +489,8 @@ export function CartCheckoutDrawer({
                   {BANK_TRANSFER_INSTRUCTION}
                 </p>
 
-                <div className="bg-[#1E1C19] border border-[#342F27] rounded-lg p-3.5 flex items-center justify-between gap-3">
-                  <div>
+                <div className="bg-[#1E1C19] border border-[#342F27] rounded-lg p-3.5 flex flex-wrap items-center justify-between gap-3">
+                  <div className="min-w-0">
                     <p className="text-xs text-[#B5AEA0]">{settings.bankAccountLabel}</p>
                     <p
                       dir="ltr"
@@ -504,7 +504,7 @@ export function CartCheckoutDrawer({
                   <button
                     type="button"
                     onClick={() => copyText(settings.bankPhoneNumber, setCopiedBank)}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-2 min-h-[40px] bg-[#B59449] hover:bg-[#C6A558] text-[#141311] text-xs font-semibold rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 min-h-[42px] bg-[#B59449] hover:bg-[#C6A558] text-[#141311] text-xs font-semibold rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer"
                   >
                     {copiedBank ? (
                       <>
@@ -529,7 +529,7 @@ export function CartCheckoutDrawer({
               </div>
 
               {/* Customer Delivery Fields */}
-              <div className="bg-white border border-[#E7E0D2] rounded-xl p-5 space-y-4">
+              <div className="bg-white border border-[#E7E0D2] rounded-xl p-4 sm:p-5 space-y-4">
                 <h3 className="text-sm font-semibold text-[#181715]">بيانات العميل والتوصيل</h3>
 
                 <div>
@@ -543,7 +543,7 @@ export function CartCheckoutDrawer({
                     value={customerName}
                     onChange={(e) => setCustomerName(e.target.value)}
                     placeholder="مثال: أحمد بن سالم الحارثي"
-                    className="w-full px-3.5 py-2.5 min-h-[42px] bg-[#FAF8F4] border border-[#D7CCB8] rounded-lg text-sm text-[#181715] focus:outline-none focus:border-[#8E6F2D]"
+                    className="w-full px-3.5 py-2.5 min-h-[44px] bg-[#FAF8F4] border border-[#D7CCB8] rounded-lg text-base sm:text-sm text-[#181715] focus:outline-none focus:border-[#8E6F2D]"
                   />
                 </div>
 
@@ -559,7 +559,7 @@ export function CartCheckoutDrawer({
                     value={customerPhone}
                     onChange={(e) => setCustomerPhone(e.target.value)}
                     placeholder="9XXXXXXX"
-                    className="w-full px-3.5 py-2.5 min-h-[42px] bg-[#FAF8F4] border border-[#D7CCB8] rounded-lg text-sm font-mono text-[#181715] focus:outline-none focus:border-[#8E6F2D]"
+                    className="w-full px-3.5 py-2.5 min-h-[44px] bg-[#FAF8F4] border border-[#D7CCB8] rounded-lg text-base sm:text-sm font-mono text-[#181715] focus:outline-none focus:border-[#8E6F2D]"
                   />
                 </div>
 
@@ -573,7 +573,7 @@ export function CartCheckoutDrawer({
                       required
                       value={city}
                       onChange={(e) => setCity(e.target.value)}
-                      className="w-full px-3.5 py-2.5 min-h-[42px] bg-[#FAF8F4] border border-[#D7CCB8] rounded-lg text-sm text-[#181715] focus:outline-none focus:border-[#8E6F2D]"
+                      className="w-full px-3.5 py-2.5 min-h-[44px] bg-[#FAF8F4] border border-[#D7CCB8] rounded-lg text-base sm:text-sm text-[#181715] focus:outline-none focus:border-[#8E6F2D]"
                     >
                       <option value="">اختر المحافظة...</option>
                       {OMAN_GOVERNORATES.map((gov) => (
@@ -594,7 +594,7 @@ export function CartCheckoutDrawer({
                       value={address}
                       onChange={(e) => setAddress(e.target.value)}
                       placeholder="الولاية، المنطقة، الشارع، رقم المنزل"
-                      className="w-full px-3.5 py-2.5 min-h-[42px] bg-[#FAF8F4] border border-[#D7CCB8] rounded-lg text-sm text-[#181715] focus:outline-none focus:border-[#8E6F2D]"
+                      className="w-full px-3.5 py-2.5 min-h-[44px] bg-[#FAF8F4] border border-[#D7CCB8] rounded-lg text-base sm:text-sm text-[#181715] focus:outline-none focus:border-[#8E6F2D]"
                     />
                   </div>
                 </div>
@@ -671,13 +671,13 @@ export function CartCheckoutDrawer({
 
               {/* Strictly Separated Order Number & Tracking Number Copyable Boxes */}
               <div className="space-y-3">
-                <div className="bg-white border border-[#E7E0D2] rounded-xl p-4 flex items-center justify-between gap-3">
-                  <div>
+                <div className="bg-white border border-[#E7E0D2] rounded-xl p-4 flex flex-wrap items-center justify-between gap-3">
+                  <div className="min-w-0">
                     <p className="text-xs font-medium text-[#615B52]">رقم الطلب</p>
                     <p
                       dir="ltr"
                       data-testid="confirmed-order-number"
-                      className="inline-block text-lg font-mono font-bold text-[#181715] tabular-nums mt-0.5"
+                      className="inline-block text-base sm:text-lg font-mono font-bold text-[#181715] tabular-nums mt-0.5"
                     >
                       {confirmedOrder.orderNumber}
                     </p>
@@ -685,7 +685,7 @@ export function CartCheckoutDrawer({
                   <button
                     type="button"
                     onClick={() => copyText(confirmedOrder.orderNumber, setCopiedOrderNum)}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-2 min-h-[40px] bg-[#EFE9DC] hover:bg-[#E2D9C5] text-[#181715] text-xs font-medium rounded-lg cursor-pointer whitespace-nowrap"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 min-h-[42px] bg-[#EFE9DC] hover:bg-[#E2D9C5] text-[#181715] text-xs font-medium rounded-lg cursor-pointer whitespace-nowrap shrink-0"
                   >
                     {copiedOrderNum ? (
                       <>
@@ -701,13 +701,13 @@ export function CartCheckoutDrawer({
                   </button>
                 </div>
 
-                <div className="bg-[#141311] text-[#FAF8F4] border border-[#2D2923] rounded-xl p-4 flex items-center justify-between gap-3">
-                  <div>
+                <div className="bg-[#141311] text-[#FAF8F4] border border-[#2D2923] rounded-xl p-4 flex flex-wrap items-center justify-between gap-3">
+                  <div className="min-w-0">
                     <p className="text-xs font-medium text-[#CFC7B8]">رقم التتبع</p>
                     <p
                       dir="ltr"
                       data-testid="confirmed-tracking-number"
-                      className="inline-block text-lg font-mono font-bold text-[#D4B774] tabular-nums mt-0.5"
+                      className="inline-block text-base sm:text-lg font-mono font-bold text-[#D4B774] tabular-nums mt-0.5"
                     >
                       {confirmedOrder.trackingNumber}
                     </p>
@@ -715,7 +715,7 @@ export function CartCheckoutDrawer({
                   <button
                     type="button"
                     onClick={() => copyText(confirmedOrder.trackingNumber, setCopiedTrackingNum)}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-2 min-h-[40px] bg-[#B59449] hover:bg-[#C6A558] text-[#141311] text-xs font-semibold rounded-lg cursor-pointer whitespace-nowrap"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 min-h-[42px] bg-[#B59449] hover:bg-[#C6A558] text-[#141311] text-xs font-semibold rounded-lg cursor-pointer whitespace-nowrap shrink-0"
                   >
                     {copiedTrackingNum ? (
                       <>
@@ -735,7 +735,7 @@ export function CartCheckoutDrawer({
               <div className="space-y-3 pt-2">
                 <div
                   data-testid="confirm-whatsapp-info"
-                  className="w-full inline-flex items-center justify-center gap-2 px-5 py-3.5 min-h-[48px] bg-[#15803D] text-white text-sm sm:text-base font-bold rounded-lg shadow-sm text-center select-text"
+                  className="w-full inline-flex items-center justify-center gap-2 px-3.5 sm:px-5 py-3.5 min-h-[48px] bg-[#15803D] text-white text-xs sm:text-base font-bold rounded-lg shadow-sm text-center leading-relaxed select-text"
                 >
                   <WhatsAppIcon className="w-4 h-4 shrink-0" />
                   <span>قم بنسخ تفاصيل طلبك وارسلها عبر الرقم 79115527</span>
@@ -752,7 +752,7 @@ export function CartCheckoutDrawer({
                 )}
 
                 <div className="bg-white border border-[#E7E0D2] rounded-xl p-4 space-y-3">
-                  <div className="flex items-center justify-between gap-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="text-xs font-semibold text-[#181715]">نص تفاصيل الطلب للواتساب</p>
                     <button
                       type="button"
@@ -763,7 +763,7 @@ export function CartCheckoutDrawer({
                           if (copied) setWhatsappCopyNotice(true);
                         })
                       }
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 min-h-[36px] bg-[#EFE9DC] hover:bg-[#E2D9C5] text-[#181715] text-xs font-medium rounded-lg cursor-pointer whitespace-nowrap"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 min-h-[38px] bg-[#EFE9DC] hover:bg-[#E2D9C5] text-[#181715] text-xs font-medium rounded-lg cursor-pointer whitespace-nowrap"
                     >
                       {copiedOrderMessage ? (
                         <>
@@ -782,7 +782,7 @@ export function CartCheckoutDrawer({
                   <div
                     dir="rtl"
                     data-testid="order-whatsapp-message-preview"
-                    className="p-3 rounded-lg bg-[#FAF8F4] border border-[#EAE3D5] text-xs sm:text-sm text-[#181715] text-start whitespace-pre-line font-sans leading-relaxed select-all"
+                    className="p-3 rounded-lg bg-[#FAF8F4] border border-[#EAE3D5] text-xs sm:text-sm text-[#181715] text-start whitespace-pre-line break-words font-sans leading-relaxed select-all"
                   >
                     {orderWhatsAppMessage}
                   </div>
@@ -799,7 +799,7 @@ export function CartCheckoutDrawer({
                     handleDrawerClose();
                     onTrackNewOrder(trk);
                   }}
-                  className="w-full inline-flex items-center justify-center gap-2 px-5 py-3 min-h-[44px] bg-white border border-[#D7CCB8] hover:bg-[#F2EDE3] text-[#181715] text-sm font-semibold rounded-lg transition-colors cursor-pointer"
+                  className="w-full inline-flex items-center justify-center gap-2 px-5 py-3 min-h-[46px] bg-white border border-[#D7CCB8] hover:bg-[#F2EDE3] text-[#181715] text-sm font-semibold rounded-lg transition-colors cursor-pointer"
                 >
                   <span>تتبع حالة الطلب الآن</span>
                 </button>
@@ -810,7 +810,7 @@ export function CartCheckoutDrawer({
 
         {/* Drawer Footer CTA */}
         {step === 'cart' && items.length > 0 && (
-          <div className="p-6 bg-white border-t border-[#E7E0D2] shrink-0">
+          <div className="p-4 sm:p-6 pb-[max(1rem,env(safe-area-inset-bottom))] sm:pb-6 bg-white border-t border-[#E7E0D2] shrink-0">
             <button
               type="button"
               disabled={hasOutOfStockItem}
@@ -818,7 +818,7 @@ export function CartCheckoutDrawer({
                 setCheckoutError(null);
                 setStep('checkout');
               }}
-              className="w-full py-3.5 px-6 min-h-[46px] bg-[#141311] hover:bg-[#8E6F2D] disabled:opacity-50 disabled:cursor-not-allowed text-[#FAF8F4] text-sm sm:text-base font-semibold rounded-lg transition-colors cursor-pointer"
+              className="w-full py-3.5 px-6 min-h-[48px] bg-[#141311] hover:bg-[#8E6F2D] disabled:opacity-50 disabled:cursor-not-allowed text-[#FAF8F4] text-sm sm:text-base font-semibold rounded-lg transition-colors cursor-pointer"
             >
               إتمام الطلب والدفع بالتحويل البنكي
             </button>
@@ -826,12 +826,12 @@ export function CartCheckoutDrawer({
         )}
 
         {step === 'checkout' && (
-          <div className="p-6 bg-white border-t border-[#E7E0D2] shrink-0">
+          <div className="p-4 sm:p-6 pb-[max(1rem,env(safe-area-inset-bottom))] sm:pb-6 bg-white border-t border-[#E7E0D2] shrink-0">
             <button
               type="submit"
               form="checkout-form"
               disabled={submittingOrder || uploadingReceipt || hasOutOfStockItem}
-              className="w-full py-3.5 px-6 min-h-[46px] bg-[#B59449] hover:bg-[#9E7E38] disabled:opacity-60 disabled:cursor-not-allowed text-[#141311] text-sm sm:text-base font-bold rounded-lg transition-colors cursor-pointer"
+              className="w-full py-3.5 px-6 min-h-[48px] bg-[#B59449] hover:bg-[#9E7E38] disabled:opacity-60 disabled:cursor-not-allowed text-[#141311] text-sm sm:text-base font-bold rounded-lg transition-colors cursor-pointer"
             >
               {submittingOrder ? 'جاري تأكيد وإرسال الطلب...' : 'تأكيد الطلب وإرسال الإيصال'}
             </button>
@@ -844,9 +844,9 @@ export function CartCheckoutDrawer({
             aria-modal="true"
             aria-labelledby="tracking-reminder-title"
             data-testid="tracking-reminder-modal"
-            className="absolute inset-0 z-20 flex items-center justify-center p-5 bg-black/55 backdrop-blur-[2px]"
+            className="absolute inset-0 z-20 flex items-center justify-center p-4 sm:p-5 bg-black/55 backdrop-blur-[2px]"
           >
-            <div className="w-full max-w-sm bg-[#FAF8F4] border border-[#D7CCB8] rounded-2xl shadow-2xl p-6 text-center space-y-4">
+            <div className="w-full max-w-sm max-h-[90dvh] overflow-y-auto bg-[#FAF8F4] border border-[#D7CCB8] rounded-2xl shadow-2xl p-5 sm:p-6 text-center space-y-4">
               <div className="w-12 h-12 mx-auto rounded-full bg-[#EFE9DC] border border-[#D7CCB8] flex items-center justify-center">
                 <Info className="w-6 h-6 text-[#8E6F2D]" aria-hidden="true" />
               </div>
@@ -867,7 +867,7 @@ export function CartCheckoutDrawer({
                 type="button"
                 data-testid="tracking-reminder-ok-btn"
                 onClick={() => setShowTrackingReminder(false)}
-                className="w-full py-3 px-5 min-h-[44px] bg-[#141311] hover:bg-[#8E6F2D] text-[#FAF8F4] text-sm font-bold rounded-lg transition-colors cursor-pointer"
+                className="w-full py-3 px-5 min-h-[46px] bg-[#141311] hover:bg-[#8E6F2D] text-[#FAF8F4] text-sm font-bold rounded-lg transition-colors cursor-pointer"
               >
                 حسناً
               </button>

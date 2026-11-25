@@ -10,6 +10,7 @@ import type {
   StoreSettings,
 } from '../types/store';
 import type { CartTotalsResult } from '../lib/storeLogic';
+import type { SeasonalThemeId } from '../lib/seasonalTheme';
 
 export interface CreateOrderPayload {
   customerName: string;
@@ -51,6 +52,7 @@ export interface LazordStoreRepository {
   togglePromoCode(id: string, active: boolean): Promise<PromoCode>;
   deletePromoCode(id: string): Promise<void>;
   updateSettings(settings: Partial<StoreSettings>): Promise<StoreSettings>;
+  updateSeasonalTheme(seasonalTheme: SeasonalThemeId): Promise<StoreSettings>;
   changeOwnerPassword(payload: {
     currentPassword: string;
     newPassword: string;
@@ -360,6 +362,18 @@ class ApiStoreRepository implements LazordStoreRepository {
       {
         method: 'PUT',
         body: JSON.stringify(settings),
+      },
+      { attachAuth: true }
+    );
+    return res.settings;
+  }
+
+  async updateSeasonalTheme(seasonalTheme: SeasonalThemeId): Promise<StoreSettings> {
+    const res = await requestJson<{ settings: StoreSettings }>(
+      '/api/admin/seasonal-theme',
+      {
+        method: 'PUT',
+        body: JSON.stringify({ seasonalTheme }),
       },
       { attachAuth: true }
     );

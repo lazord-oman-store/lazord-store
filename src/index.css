@@ -18,12 +18,13 @@
   html {
     font-family: var(--font-sans);
     scroll-behavior: smooth;
+    overflow-x: clip;
   }
 
   body {
     background-color: #FAF8F4;
     color: #181715;
-    overflow-x: hidden;
+    overflow-x: clip;
   }
 
   h1, h2, .font-editorial {
@@ -35,8 +36,90 @@
   font-variant-numeric: tabular-nums;
 }
 
+@keyframes lazord-lantern-sway {
+  0%, 100% {
+    transform: rotate(-2.4deg);
+  }
+  50% {
+    transform: rotate(2.4deg);
+  }
+}
+
+@keyframes lazord-lantern-sway-alt {
+  0%, 100% {
+    transform: rotate(2deg);
+  }
+  50% {
+    transform: rotate(-2deg);
+  }
+}
+
+@keyframes lazord-star-twinkle {
+  0%, 100% {
+    opacity: 0.42;
+    transform: scale(0.92);
+  }
+  50% {
+    opacity: 0.96;
+    transform: scale(1.08);
+  }
+}
+
+@keyframes lazord-gold-float {
+  0%, 100% {
+    opacity: 0.55;
+    transform: translateY(0px) scale(0.96);
+  }
+  50% {
+    opacity: 0.95;
+    transform: translateY(-4px) scale(1.05);
+  }
+}
+
+@keyframes lazord-bunting-sway {
+  0%, 100% {
+    transform: rotate(-1deg) translateY(0px);
+  }
+  50% {
+    transform: rotate(1deg) translateY(2px);
+  }
+}
+
+.lazord-lantern-sway {
+  transform-origin: top center;
+  animation: lazord-lantern-sway 5.4s ease-in-out infinite;
+}
+
+.lazord-lantern-sway-alt {
+  transform-origin: top center;
+  animation: lazord-lantern-sway-alt 6.2s ease-in-out infinite;
+}
+
+.lazord-star-twinkle {
+  transform-origin: center;
+  animation: lazord-star-twinkle 3.8s ease-in-out infinite;
+}
+
+.lazord-gold-float {
+  transform-origin: center;
+  animation: lazord-gold-float 4.6s ease-in-out infinite;
+}
+
+.lazord-bunting-sway {
+  transform-origin: top center;
+  animation: lazord-bunting-sway 6s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
+  }
+
+  .lazord-lantern-sway,
+  .lazord-lantern-sway-alt,
+  .lazord-star-twinkle,
+  .lazord-gold-float,
+  .lazord-bunting-sway {
+    animation: none !important;
   }
 }

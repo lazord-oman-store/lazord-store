@@ -51,10 +51,10 @@ function ProductCard({
       </div>
 
       {/* Card Body */}
-      <div className="p-5 sm:p-6 flex-1 flex flex-col justify-between gap-4">
-        <div className="space-y-2.5">
+      <div className="p-4 sm:p-6 flex-1 flex flex-col justify-between gap-3.5 sm:gap-4">
+        <div className="space-y-2 sm:space-y-2.5">
           {/* Unboxed clean metadata row with typographic separator */}
-          <div className="flex items-center gap-2 text-xs text-[#615B52]">
+          <div className="flex flex-wrap items-center gap-2 text-xs text-[#615B52]">
             <span className="font-semibold text-[#8E6F2D]">
               {getCategoryLabelAr(product.category)}
             </span>
@@ -71,7 +71,7 @@ function ProductCard({
           </p>
         </div>
 
-        <div className="pt-4 border-t border-[#F0EAE0] flex items-center justify-between gap-3">
+        <div className="pt-3.5 sm:pt-4 border-t border-[#F0EAE0] flex flex-wrap items-center justify-between gap-3">
           <div className="text-base sm:text-lg font-bold text-[#181715]">
             <OmrPrice amount={product.priceOmr} />
           </div>
@@ -120,11 +120,11 @@ export function ProductCatalog({
   ];
 
   return (
-    <section id="catalog" className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 py-14 lg:py-20">
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-10">
+    <section id="catalog" className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14 lg:py-20">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-5 sm:gap-6 mb-8 sm:mb-10">
         <div>
-          <p className="text-xs font-medium text-[#8E6F2D] mb-2">مختارات الدار</p>
-          <h2 className="font-editorial text-3xl sm:text-4xl font-bold text-[#181715] text-balance">
+          <p className="text-xs font-medium text-[#8E6F2D] mb-1.5 sm:mb-2">مختارات الدار</p>
+          <h2 className="font-editorial text-2xl sm:text-4xl font-bold text-[#181715] text-balance">
             مجموعة العطور والبخور
           </h2>
         </div>
@@ -133,7 +133,7 @@ export function ProductCatalog({
         <div
           role="tablist"
           aria-label="تصفية المنتجات"
-          className="inline-flex items-center gap-1 p-1 bg-[#EFE9DC] border border-[#E2D9C5] rounded-lg self-start sm:self-auto"
+          className="w-full sm:w-auto grid grid-cols-3 sm:inline-flex items-center gap-1 p-1 bg-[#EFE9DC] border border-[#E2D9C5] rounded-lg"
         >
           {tabs.map((tab) => {
             const isActive = activeFilter === tab.id;
@@ -144,7 +144,7 @@ export function ProductCatalog({
                 role="tab"
                 aria-selected={isActive}
                 onClick={() => onFilterChange(tab.id)}
-                className={`px-4 py-2 min-h-[40px] text-sm font-medium rounded-md transition-colors whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-2 focus-visible:outline-[#8E6F2D] ${
+                className={`px-3 sm:px-4 py-2.5 sm:py-2 min-h-[42px] sm:min-h-[40px] text-sm font-medium rounded-md transition-colors whitespace-nowrap text-center cursor-pointer focus-visible:outline-2 focus-visible:outline-[#8E6F2D] ${
                   isActive
                     ? 'bg-[#141311] text-[#FAF8F4]'
                     : 'text-[#4F4A42] hover:text-[#181715]'
@@ -158,13 +158,13 @@ export function ProductCatalog({
       </div>
 
       {filtered.length === 0 ? (
-        <div className="bg-white border border-[#E7E0D2] rounded-xl p-12 text-center">
+        <div className="bg-white border border-[#E7E0D2] rounded-xl p-10 sm:p-12 text-center">
           <p className="text-base text-[#575148]">
             لا توجد منتجات متوفرة ضمن هذا التصنيف حالياً.
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 lg:gap-8">
           {filtered.map((product) => (
             <ProductCard
               key={product.id}

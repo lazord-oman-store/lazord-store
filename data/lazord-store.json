@@ -86,7 +86,8 @@
     "bankPhoneNumber": "92481750",
     "bankAccountLabel": "حساب تحويل بنكي مباشر — دار لازورد للعطور",
     "whatsappNumber": "96879115527",
-    "currencyLabel": "ر.ع"
+    "currencyLabel": "ر.ع",
+    "seasonalTheme": "default"
   },
   "totalStoreVisits": 0,
   "adminCredential": null,

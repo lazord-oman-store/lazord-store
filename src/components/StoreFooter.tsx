@@ -1,18 +1,22 @@
 import { useRef } from 'react';
 import { Instagram } from 'lucide-react';
+import { normalizeSeasonalTheme, type SeasonalThemeId } from '../lib/seasonalTheme';
 import { LAZORD_INSTAGRAM_URL } from '../lib/storeLogic';
 import type { StoreSettings } from '../types/store';
 import { BrandLogo } from './BrandLogo';
+import { SeasonalHeroDecorations } from './SeasonalDecorations';
 import { WhatsAppIcon } from './WhatsAppIcon';
 
 interface StoreFooterProps {
   settings: StoreSettings;
+  seasonalTheme?: SeasonalThemeId;
   onSecretAdminTrigger: () => void;
 }
 
-export function StoreFooter({ settings, onSecretAdminTrigger }: StoreFooterProps) {
+export function StoreFooter({ settings, seasonalTheme, onSecretAdminTrigger }: StoreFooterProps) {
   const clickCountRef = useRef(0);
   const lastClickTimeRef = useRef(0);
+  const activeTheme = normalizeSeasonalTheme(seasonalTheme ?? settings.seasonalTheme);
 
   const handleCopyrightClick = () => {
     const now = Date.now();
@@ -30,14 +34,15 @@ export function StoreFooter({ settings, onSecretAdminTrigger }: StoreFooterProps
   };
 
   return (
-    <footer className="bg-[#141311] text-[#CFC7B8] border-t border-[#2B2721]">
-      <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-8 pb-10 border-b border-[#2A2620]">
+    <footer className="relative overflow-hidden bg-[#141311] text-[#CFC7B8] border-t border-[#2B2721]">
+      <SeasonalHeroDecorations theme={activeTheme} compact />
+      <div className="relative z-10 max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-12">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 sm:gap-8 pb-8 sm:pb-10 border-b border-[#2A2620]">
           <div className="md:col-span-6 space-y-4">
             <BrandLogo
               variant="dark"
-              className="w-36 h-36 sm:w-44 sm:h-44"
-              imgClassName="scale-[1.08]"
+              className="w-32 h-32 sm:w-44 sm:h-44"
+              imgClassName="scale-[1.02]"
             />
             <p className="text-sm leading-relaxed text-[#B5AEA0] max-w-xl">
               {settings.brandBio}
@@ -46,10 +51,10 @@ export function StoreFooter({ settings, onSecretAdminTrigger }: StoreFooterProps
 
           <div className="md:col-span-6 flex flex-col md:items-end justify-center gap-3">
             <p className="text-sm font-medium text-[#FAF8F4]">خدمة العملاء والاستفسارات</p>
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-3 w-full md:w-auto">
               <div
                 data-testid="footer-whatsapp-info"
-                className="inline-flex items-center gap-2 px-4 py-2.5 min-h-[44px] rounded-lg border border-[#3A342B] bg-[#1E1C19] text-sm text-[#FAF8F4] whitespace-nowrap select-text"
+                className="inline-flex items-center justify-center sm:justify-start gap-2 px-4 py-2.5 min-h-[44px] rounded-lg border border-[#3A342B] bg-[#1E1C19] text-xs sm:text-sm text-[#FAF8F4] text-center sm:text-start sm:whitespace-nowrap max-w-full select-text"
               >
                 <WhatsAppIcon className="w-4 h-4 text-[#B59449] shrink-0" />
                 <span>تواصل معنا عبر الواتساب على الرقم 79115527</span>
@@ -59,16 +64,16 @@ export function StoreFooter({ settings, onSecretAdminTrigger }: StoreFooterProps
                 href={LAZORD_INSTAGRAM_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-4 py-2.5 min-h-[44px] rounded-lg border border-[#3A342B] bg-[#1E1C19] hover:border-[#B59449] text-sm text-[#FAF8F4] transition-colors whitespace-nowrap"
+                className="inline-flex items-center justify-center sm:justify-start gap-2 px-4 py-2.5 min-h-[44px] rounded-lg border border-[#3A342B] bg-[#1E1C19] hover:border-[#B59449] text-xs sm:text-sm text-[#FAF8F4] transition-colors sm:whitespace-nowrap"
               >
-                <Instagram className="w-4 h-4 text-[#B59449]" aria-hidden="true" />
+                <Instagram className="w-4 h-4 text-[#B59449] shrink-0" aria-hidden="true" />
                 <span>تواصل معنا عبر إنستجرام</span>
               </a>
             </div>
           </div>
         </div>
 
-        <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-[#8D867A]">
+        <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 text-xs text-[#8D867A] text-center sm:text-start">
           {/* Secret 5-click trigger on © LAZORD — styled cleanly as copyright text */}
           <button
             type="button"

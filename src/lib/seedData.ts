@@ -18,6 +18,7 @@ export const INITIAL_SEED_STATE: PersistedStoreState = {
     bankAccountLabel: 'حساب تحويل بنكي مباشر — دار لازورد للعطور',
     whatsappNumber: '96879115527',
     currencyLabel: 'ر.ع',
+    seasonalTheme: 'default',
   },
   products: [
     {

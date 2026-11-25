@@ -92,24 +92,24 @@ export function TrackOrderModal({
       role="dialog"
       aria-modal="true"
       aria-labelledby="track-order-title"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs"
     >
-      <div className="w-full max-w-xl bg-[#FAF8F4] border border-[#DFD6C3] rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
-        <div className="px-6 py-4 bg-[#141311] text-[#FAF8F4] flex items-center justify-between">
-          <h2 id="track-order-title" className="font-editorial text-xl font-bold">
+      <div className="w-full max-w-xl bg-[#FAF8F4] border border-[#DFD6C3] rounded-2xl shadow-2xl overflow-hidden max-h-[90dvh] flex flex-col">
+        <div className="px-4 py-3.5 sm:px-6 sm:py-4 bg-[#141311] text-[#FAF8F4] flex items-center justify-between gap-2 shrink-0">
+          <h2 id="track-order-title" className="font-editorial text-lg sm:text-xl font-bold">
             تتبع طلبك
           </h2>
           <button
             type="button"
             onClick={onClose}
             aria-label="إغلاق نافذة تتبع الطلب"
-            className="p-2 rounded-lg text-[#CFC7B8] hover:text-white hover:bg-white/10 cursor-pointer"
+            className="p-2 min-w-[44px] min-h-[44px] inline-flex items-center justify-center rounded-lg text-[#CFC7B8] hover:text-white hover:bg-white/10 cursor-pointer shrink-0"
           >
             <X className="w-5 h-5" aria-hidden="true" />
           </button>
         </div>
 
-        <div className="p-6 overflow-y-auto space-y-6">
+        <div className="p-4 sm:p-6 overflow-y-auto overscroll-contain space-y-5 sm:space-y-6">
           <form onSubmit={handleSubmit} className="space-y-3">
             <label
               htmlFor="tracking-number-input"
@@ -125,12 +125,12 @@ export function TrackOrderModal({
                 value={trackingInput}
                 onChange={(e) => setTrackingInput(e.target.value)}
                 placeholder="TRK-LZD-84920"
-                className="flex-1 px-4 py-2.5 min-h-[44px] bg-white border border-[#D7CCB8] rounded-lg text-sm font-mono text-[#181715] focus:outline-none focus:border-[#8E6F2D]"
+                className="flex-1 px-4 py-2.5 min-h-[44px] bg-white border border-[#D7CCB8] rounded-lg text-base sm:text-sm font-mono text-[#181715] focus:outline-none focus:border-[#8E6F2D]"
               />
               <button
                 type="submit"
                 disabled={loading}
-                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 min-h-[44px] bg-[#141311] hover:bg-[#8E6F2D] disabled:opacity-60 text-[#FAF8F4] text-sm font-medium rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 min-h-[46px] sm:min-h-[44px] bg-[#141311] hover:bg-[#8E6F2D] disabled:opacity-60 text-[#FAF8F4] text-sm font-medium rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer"
               >
                 <Search className="w-4 h-4" aria-hidden="true" />
                 <span>{loading ? 'جاري البحث...' : 'تحقق من الحالة'}</span>
@@ -153,7 +153,7 @@ export function TrackOrderModal({
           {result && (
             <div
               data-testid="tracking-result"
-              className="bg-white border border-[#E7E0D2] rounded-xl p-5 space-y-5"
+              className="bg-white border border-[#E7E0D2] rounded-xl p-4 sm:p-5 space-y-5"
             >
               <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-[#EFE9DC]">
                 <div>
@@ -174,7 +174,7 @@ export function TrackOrderModal({
                 </div>
               </div>
 
-              {/* Status Progress Steps */}
+              {/* Status Progress Steps (Clean vertical stepper on portrait mobile, 5-column horizontal bar on sm+) */}
               {result.status === 'مرفوض' ? (
                 <div className="p-4 rounded-lg bg-red-50 border border-red-200 text-sm text-red-900 space-y-3">
                   <p>
@@ -182,27 +182,27 @@ export function TrackOrderModal({
                   </p>
                   <div
                     data-testid="track-rejected-whatsapp-info"
-                    className="inline-flex items-center gap-2 px-4 py-2 min-h-[40px] rounded-lg bg-[#141311] text-[#FAF8F4] text-xs font-semibold whitespace-nowrap select-text"
+                    className="w-full sm:w-auto inline-flex items-center justify-center sm:justify-start gap-2 px-4 py-2.5 min-h-[42px] rounded-lg bg-[#141311] text-[#FAF8F4] text-xs font-semibold text-center sm:whitespace-nowrap select-text"
                   >
                     <WhatsAppIcon className="w-4 h-4 text-[#B59449] shrink-0" />
                     <span>تواصل معنا عبر الواتساب على الرقم 79115527</span>
                   </div>
                 </div>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-2.5">
                   <p className="text-xs font-medium text-[#615B52]">مراحل تنفيذ الطلب</p>
-                  <div className="grid grid-cols-5 gap-1.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-5 gap-2.5 sm:gap-1.5">
                     {PROGRESS_STEPS.map((step, idx) => {
                       const reached = idx <= activeStepIndex;
                       return (
-                        <div key={step} className="space-y-1.5">
+                        <div key={step} className="flex items-center gap-2.5 sm:block sm:space-y-1.5">
                           <div
-                            className={`h-1.5 rounded-full ${
+                            className={`w-6 h-2 sm:w-full sm:h-1.5 rounded-full shrink-0 ${
                               reached ? 'bg-[#B59449]' : 'bg-[#EAE3D5]'
                             }`}
                           />
                           <p
-                            className={`text-[11px] leading-tight ${
+                            className={`text-xs sm:text-[11px] leading-tight ${
                               reached ? 'font-semibold text-[#181715]' : 'text-[#7A7367]'
                             }`}
                           >
@@ -230,7 +230,7 @@ export function TrackOrderModal({
                       <span className="text-[#181715]">
                         {item.nameAr} × <span className="font-mono">{item.quantity}</span>
                       </span>
-                      <span className="text-[#4F4A42]">
+                      <span className="text-[#4F4A42] shrink-0">
                         <OmrPrice amount={item.lineTotalOmr} />
                       </span>
                     </li>

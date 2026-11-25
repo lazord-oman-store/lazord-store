@@ -1,3 +1,5 @@
+import type { SeasonalThemeId } from '../lib/seasonalTheme';
+
 export type ProductCategory = 'perfume' | 'bukhoor';
 
 export type OrderStatus =
@@ -97,6 +99,7 @@ export interface StoreSettings {
   bankAccountLabel: string;
   whatsappNumber: string;
   currencyLabel: string;
+  seasonalTheme?: SeasonalThemeId;
 }
 
 export interface StoreAnalytics {

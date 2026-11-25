@@ -1,19 +1,28 @@
 import { useState, type FormEvent } from 'react';
 import { ArrowRight, Eye, EyeOff } from 'lucide-react';
+import { normalizeSeasonalTheme, type SeasonalThemeId } from '../lib/seasonalTheme';
 import { ApiRequestError, storeRepository } from '../services/storeRepository';
 import { BrandLogo } from './BrandLogo';
+import {
+  SeasonalGreetingBanner,
+  SeasonalHeroDecorations,
+  SeasonalPageCanvas,
+} from './SeasonalDecorations';
 
 interface OwnerLoginViewProps {
   initialNeedsSetup?: boolean;
+  seasonalTheme?: SeasonalThemeId;
   onLoginSuccess: () => void;
   onBackToStore: () => void;
 }
 
 export function OwnerLoginView({
   initialNeedsSetup = false,
+  seasonalTheme,
   onLoginSuccess,
   onBackToStore,
 }: OwnerLoginViewProps) {
+  const activeTheme = normalizeSeasonalTheme(seasonalTheme);
   const [needsSetup, setNeedsSetup] = useState(initialNeedsSetup);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -48,13 +57,17 @@ export function OwnerLoginView({
   };
 
   return (
-    <div className="min-h-screen bg-[#141311] text-[#FAF8F4] flex flex-col items-center justify-center p-4">
-      <div className="w-full max-w-md bg-[#1C1A17] border border-[#2F2A22] rounded-2xl p-6 sm:p-8 space-y-6 shadow-2xl">
+    <div className="min-h-screen bg-[#141311] text-[#FAF8F4] flex flex-col overflow-x-clip">
+      <SeasonalGreetingBanner theme={activeTheme} />
+      <div className="relative flex-1 flex flex-col items-center justify-center p-3 sm:p-4 overflow-hidden">
+        <SeasonalHeroDecorations theme={activeTheme} />
+        <SeasonalPageCanvas theme={activeTheme} variant="admin" />
+        <div className="relative z-10 w-full max-w-md bg-[#1C1A17] border border-[#2F2A22] rounded-2xl p-5 sm:p-8 space-y-5 sm:space-y-6 shadow-2xl">
         <div className="space-y-2 text-center">
           <BrandLogo
             variant="dark"
-            className="mx-auto w-36 h-36"
-            imgClassName="scale-[1.08]"
+            className="mx-auto w-28 h-28 sm:w-36 sm:h-36"
+            imgClassName="scale-[1.02]"
           />
           <h1 className="font-editorial text-2xl sm:text-3xl font-bold text-[#FAF8F4]">
             {needsSetup ? 'إعداد حساب صاحب البراند' : 'تسجيل دخول صاحب البراند'}
@@ -82,7 +95,7 @@ export function OwnerLoginView({
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder="أدخل اسم المستخدم"
-              className="w-full px-4 py-2.5 min-h-[44px] bg-[#141311] border border-[#383229] rounded-lg text-sm text-[#FAF8F4] placeholder:text-[#7B7468] focus:outline-none focus:border-[#B59449]"
+              className="w-full px-4 py-2.5 min-h-[46px] sm:min-h-[44px] bg-[#141311] border border-[#383229] rounded-lg text-base sm:text-sm text-[#FAF8F4] placeholder:text-[#7B7468] focus:outline-none focus:border-[#B59449]"
             />
           </div>
 
@@ -102,7 +115,7 @@ export function OwnerLoginView({
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="أدخل كلمة المرور"
-                className="w-full pl-4 pr-11 py-2.5 min-h-[44px] bg-[#141311] border border-[#383229] rounded-lg text-sm text-[#FAF8F4] placeholder:text-[#7B7468] focus:outline-none focus:border-[#B59449]"
+                className="w-full pl-4 pr-12 py-2.5 min-h-[46px] sm:min-h-[44px] bg-[#141311] border border-[#383229] rounded-lg text-base sm:text-sm text-[#FAF8F4] placeholder:text-[#7B7468] focus:outline-none focus:border-[#B59449]"
               />
               <button
                 type="button"
@@ -110,7 +123,7 @@ export function OwnerLoginView({
                 aria-label={showPassword ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور'}
                 aria-pressed={showPassword}
                 data-testid="toggle-login-password-visibility"
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 rounded-md text-[#B59449] hover:text-[#E5C983] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#B59449] transition-colors cursor-pointer"
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 p-2 min-w-[40px] min-h-[40px] inline-flex items-center justify-center rounded-md text-[#B59449] hover:text-[#E5C983] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#B59449] transition-colors cursor-pointer"
               >
                 {showPassword ? (
                   <EyeOff className="w-4 h-4" aria-hidden="true" />
@@ -153,6 +166,7 @@ export function OwnerLoginView({
             <span>العودة إلى متجر LAZORD</span>
           </button>
         </div>
+      </div>
       </div>
     </div>
   );

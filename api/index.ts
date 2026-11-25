@@ -67,6 +67,32 @@ interface PromoCode {
   createdAt: string;
 }
 
+type SeasonalThemeId =
+  | 'default'
+  | 'ramadan'
+  | 'eid_fitr'
+  | 'eid_adha'
+  | 'oman_national_day';
+
+const SEASONAL_THEME_IDS: readonly SeasonalThemeId[] = [
+  'default',
+  'ramadan',
+  'eid_fitr',
+  'eid_adha',
+  'oman_national_day',
+] as const;
+
+function isValidSeasonalThemeId(value: unknown): value is SeasonalThemeId {
+  return (
+    typeof value === 'string' &&
+    (SEASONAL_THEME_IDS as readonly string[]).includes(value.trim())
+  );
+}
+
+function normalizeSeasonalTheme(value: unknown): SeasonalThemeId {
+  return isValidSeasonalThemeId(value) ? (value.trim() as SeasonalThemeId) : 'default';
+}
+
 interface StoreSettings {
   brandName: string;
   brandBio: string;
@@ -74,6 +100,7 @@ interface StoreSettings {
   bankAccountLabel: string;
   whatsappNumber: string;
   currencyLabel: string;
+  seasonalTheme: SeasonalThemeId;
 }
 
 interface AdminCredentialRecord {
@@ -138,6 +165,7 @@ const INITIAL_SEED_STATE: PersistedStoreState = {
     bankAccountLabel: 'حساب تحويل بنكي مباشر — دار لازورد للعطور',
     whatsappNumber: '96879115527',
     currencyLabel: 'ر.ع',
+    seasonalTheme: 'default',
   },
   products: [
     {
@@ -320,6 +348,7 @@ function normalizeStoreState(raw: unknown): PersistedStoreState {
   if (loadedSettings.whatsappNumber === '96892481750') {
     loadedSettings.whatsappNumber = '96879115527';
   }
+  loadedSettings.seasonalTheme = normalizeSeasonalTheme(loadedSettings.seasonalTheme);
   const normalizedProducts: Product[] = Array.isArray(parsed.products)
     ? parsed.products
         .filter((item): item is Product => Boolean(item && typeof item === 'object'))
@@ -1697,6 +1726,10 @@ export default async function handler(
 
       if (method === 'PUT' && pathname === '/api/admin/settings') {
         const body = await readJsonBody<Partial<StoreSettings>>(req);
+        if (body.seasonalTheme !== undefined && !isValidSeasonalThemeId(body.seasonalTheme)) {
+          sendJson(res, 400, { error: 'ثيم الزينة الموسمية المحدد غير صالح.' });
+          return;
+        }
         state.settings = {
           ...state.settings,
           brandBio:
@@ -1718,9 +1751,29 @@ export default async function handler(
                   return cleaned.length >= 8 ? cleaned : state.settings.whatsappNumber;
                 })()
               : state.settings.whatsappNumber,
+          seasonalTheme:
+            body.seasonalTheme !== undefined
+              ? normalizeSeasonalTheme(body.seasonalTheme)
+              : normalizeSeasonalTheme(state.settings.seasonalTheme),
         };
         await writeStoreState(state);
         sendJson(res, 200, { settings: state.settings });
+        return;
+      }
+
+      if ((method === 'PUT' || method === 'POST') && pathname === '/api/admin/seasonal-theme') {
+        const body = await readJsonBody<{ seasonalTheme?: unknown }>(req);
+        if (!isValidSeasonalThemeId(body.seasonalTheme)) {
+          sendJson(res, 400, { error: 'يرجى اختيار زينة موسمية صالحة من القائمة.' });
+          return;
+        }
+        const nextTheme = normalizeSeasonalTheme(body.seasonalTheme);
+        state.settings = {
+          ...state.settings,
+          seasonalTheme: nextTheme,
+        };
+        await writeStoreState(state);
+        sendJson(res, 200, { seasonalTheme: nextTheme, settings: state.settings });
         return;
       }
 

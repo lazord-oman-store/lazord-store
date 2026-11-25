@@ -24,7 +24,7 @@ export function StoreHeader({
 
   return (
     <header className="sticky top-0 z-40 bg-[#FAF8F4] border-b border-[#E7E0D2]">
-      <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 h-[88px] sm:h-[96px] flex items-center justify-between gap-4 sm:gap-8">
+      <div className="max-w-[1280px] mx-auto px-3 sm:px-6 lg:px-8 h-[76px] sm:h-[96px] flex items-center justify-between gap-2.5 sm:gap-8">
         {/* Zone 1: Official Brand Logo Blended onto Header */}
         <a
           href="#top"
@@ -34,8 +34,8 @@ export function StoreHeader({
         >
           <BrandLogo
             variant="light"
-            className="w-[78px] h-[78px] sm:w-[88px] sm:h-[88px]"
-            imgClassName="scale-[1.06]"
+            className="w-[64px] h-[64px] sm:w-[88px] sm:h-[88px]"
+            imgClassName="scale-[1.02] sm:scale-[1.05]"
           />
         </a>
 
